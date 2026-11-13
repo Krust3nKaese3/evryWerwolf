@@ -134,11 +134,14 @@ async function checkFreshWolves(browser, base) {
     await page.locator('#name-form button').click();
   }
   await page.getByRole('button', { name: 'Weiter zu den Rollen' }).click();
+  const pool = page.getByRole('button', { name: /Mehr Rollen als Spieler/ });
+  if ((await pool.innerText()).includes('an')) await pool.click();
   await setCount(page, 'Werwolf', 1);
   await setCount(page, 'Dorfbewohner', 3);
   await setCount(page, 'Seherin', 0);
   await setCount(page, 'Hexe', 0);
   await page.getByRole('button', { name: 'Rollen verteilen' }).click();
+  await revealEveryone(page);
   await page.getByRole('button', { name: 'Spiel starten' }).click();
   const wolfText = await reachWolf(page);
   assert.ok(wolfText.indexOf('Haus von') >= 0, wolfText);
@@ -152,11 +155,14 @@ async function checkFreshWolves(browser, base) {
     await pack.locator('#name-form button').click();
   }
   await pack.getByRole('button', { name: 'Weiter zu den Rollen' }).click();
+  const poolMany = pack.getByRole('button', { name: /Mehr Rollen als Spieler/ });
+  if ((await poolMany.innerText()).includes('an')) await poolMany.click();
   await setCount(pack, 'Werwolf', 2);
   await setCount(pack, 'Dorfbewohner', 3);
   await setCount(pack, 'Seherin', 0);
   await setCount(pack, 'Hexe', 0);
   await pack.getByRole('button', { name: 'Rollen verteilen' }).click();
+  await revealEveryone(pack);
   await pack.getByRole('button', { name: 'Spiel starten' }).click();
   await reachWolf(pack);
   const choices = pack.locator('#app .choice');
@@ -168,6 +174,16 @@ async function checkFreshWolves(browser, base) {
   assert.ok(/Haus von /.test(second.replace('Das Rudel wählt ein Haus', '')), second);
   assert.deepStrictEqual(many.errors, []);
   await pack.close();
+}
+
+async function revealEveryone(page) {
+  const start = page.getByRole('button', { name: 'Spiel starten' });
+  for (let i = 0; i < 12 && await start.isDisabled(); i++) {
+    const unseen = page.locator('button[data-act="reveal-pick"]:not(.seen)');
+    if (!(await unseen.count())) break;
+    await unseen.first().click();
+    await page.getByRole('button', { name: 'Verstanden, verdecken' }).click();
+  }
 }
 
 async function reachWolf(page) {

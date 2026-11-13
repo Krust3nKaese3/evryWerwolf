@@ -53,7 +53,13 @@ function ackWhile(state, pred) {
 }
 
 function startNight(state) {
-  if (state.screen === 'reveal') W.send(state, { type: 'start-game' });
+  if (state.screen === 'reveal') {
+    state.players.forEach(function (p) {
+      W.send(state, { type: 'reveal-pick', id: p.id });
+      W.send(state, { type: 'ack' });
+    });
+    W.send(state, { type: 'start-game' });
+  }
   assert.strictEqual(state.screen, 'night');
   assert.strictEqual(state.nightNumber, 1);
 }
@@ -78,9 +84,13 @@ function voteAll(state, choiceFor) {
   let guard = 0;
   while (state.screen === 'vote') {
     const view = W.view(state);
-    if (view.step === 'handoff') W.send(state, { type: 'ack' });
+    if (view.step === 'list') {
+      const next = W.living(state).filter(function (p) { return (state.voteDone || []).indexOf(p.id) < 0; })[0];
+      W.send(state, { type: 'vote-pick', id: next.id });
+    } else if (view.step === 'ready') W.send(state, { type: 'go' });
+    else if (view.step === 'handoff') W.send(state, { type: 'ack' });
     else W.send(state, { type: 'confirm', id: choiceFor(W.playerById(state, view.playerId), state) });
-    if (++guard > 50) throw new Error('vote loop');
+    if (++guard > 80) throw new Error('vote loop ' + JSON.stringify(W.view(state)));
   }
 }
 
@@ -334,7 +344,8 @@ function playNight(state, decide) {
   while (state.screen === 'night' || state.screen === 'hunter') {
     const view = W.view(state);
     if (state.screen === 'hunter') {
-      if (view.step === 'handoff') W.send(state, { type: 'ack' });
+      if (view.step === 'list' || view.step === 'handoff') W.send(state, { type: 'hunter-pick', id: state.hunters[0] });
+      else if (view.step === 'ready') W.send(state, { type: 'go' });
       else {
         const target = W.living(state)[0];
         W.send(state, { type: 'confirm', id: target.id });
@@ -431,9 +442,10 @@ test('Schaufel holt mit verbrauchten Tränken zurück, ohne Liebe', function () 
   if (state.screen === 'announce') W.send(state, { type: 'ack' });
   while (state.screen === 'announce' || state.screen === 'hunter') {
     if (state.screen === 'hunter') {
-      const t = W.living(state)[0];
-      if (W.view(state).step === 'handoff') W.send(state, { type: 'ack' });
-      else W.send(state, { type: 'confirm', id: t.id });
+      const step = W.view(state).step;
+      if (step === 'list' || step === 'handoff') W.send(state, { type: 'hunter-pick', id: state.hunters[0] });
+      else if (step === 'ready') W.send(state, { type: 'go' });
+      else W.send(state, { type: 'confirm', id: W.living(state)[0].id });
     } else W.send(state, { type: 'ack' });
   }
   assert.strictEqual(W.playerById(state, 2).alive, false);
@@ -474,12 +486,14 @@ test('Russe-Duell: falscher Name tut nichts, Kugel trifft den ersten Zug', funct
   assert.strictEqual(W.playerById(state, 1).russeUsed, true);
   assert.strictEqual(state.duel.bulletAt, 0);
   assert.strictEqual(state.duel.order[0], 1);
-  W.send(state, { type: 'ack' });
+  assert.strictEqual(state.duel.stage, 'pull-ready');
   W.send(state, { type: 'ack' });
   assert.strictEqual(state.duel.hit, true);
   W.send(state, { type: 'ack' });
   while (state.screen === 'hunter') {
-    if (W.view(state).step === 'handoff') W.send(state, { type: 'ack' });
+    const step = W.view(state).step;
+    if (step === 'list' || step === 'handoff') W.send(state, { type: 'hunter-pick', id: state.hunters[0] });
+    else if (step === 'ready') W.send(state, { type: 'go' });
     else W.send(state, { type: 'confirm', id: W.living(state)[0].id });
   }
   if (state.screen === 'announce') W.send(state, { type: 'ack' });
@@ -622,6 +636,15 @@ test('Namenliste: Rolle bleibt antippbar, Nachtname nicht', function () {
   assert.strictEqual(W.view(state).playerId, 1);
   W.send(state, { type: 'ack' });
   W.send(state, { type: 'start-game' });
+  assert.strictEqual(state.screen, 'reveal');
+  assert.ok(state.error);
+  state.players.forEach(function (p) {
+    if (!state.revealed[p.id]) {
+      W.send(state, { type: 'reveal-pick', id: p.id });
+      W.send(state, { type: 'ack' });
+    }
+  });
+  W.send(state, { type: 'start-game' });
   assert.strictEqual(state.screen, 'night');
   assert.strictEqual(state.day, 0);
   W.send(state, { type: 'night-pick', id: 2 });
@@ -754,6 +777,62 @@ test('Alter Nachtstand mit cursor wird fortgesetzt und nicht gesperrt', function
   assert.strictEqual(secondRound.players.length, 4);
   assert.strictEqual(secondRound.players[2].name, 'xhdh');
   assert.strictEqual(secondRound.players[2].role, undefined);
+});
+
+function lcg(seed) {
+  let s = seed >>> 0;
+  return function () {
+    s = (Math.imul(1664525, s) + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+}
+
+test('Rollenpool achtet auf Min und Max und lässt Karten liegen', function () {
+  const counts = blankCounts();
+  counts.dorfbewohner = 8;
+  counts.seherin = 3;
+  const names = ['A', 'B', 'C', 'D', 'E', 'F'];
+  const seen = { 1: 0, 2: 0 };
+  let sawFewerSeers = false;
+  for (let seed = 1; seed <= 40; seed++) {
+    const state = W.createGame(names, counts, {
+      rng: lcg(seed),
+      nachUses: 1,
+      rolePool: true,
+      wolfMin: 1,
+      wolfMax: 2
+    });
+    const wolves = state.players.filter(function (p) { return p.role === 'werwolf'; }).length;
+    const seers = state.players.filter(function (p) { return p.role === 'seherin'; }).length;
+    assert.ok(wolves >= 1 && wolves <= 2, 'Wölfe ' + wolves);
+    assert.ok(seers <= 3);
+    assert.strictEqual(state.players.length, 6);
+    seen[wolves] += 1;
+    if (seers < 3) sawFewerSeers = true;
+  }
+  assert.ok(seen[1] > 0 && seen[2] > 0, JSON.stringify(seen));
+  assert.strictEqual(sawFewerSeers, true);
+  const bad = blankCounts();
+  bad.dorfbewohner = 1;
+  bad.wolfMin = 0;
+  bad.wolfMax = 1;
+  assert.ok(W.validateSetup(bad, 4, 1, 2, true));
+  bad.wolfMin = 3;
+  bad.wolfMax = 2;
+  bad.dorfbewohner = 6;
+  assert.ok(W.validateSetup(bad, 4, 1, 2, true));
+  bad.wolfMin = 4;
+  bad.wolfMax = 4;
+  assert.ok(W.validateSetup(bad, 4, 1, 2, true));
+  bad.wolfMin = 1;
+  bad.wolfMax = 1;
+  bad.dorfbewohner = 1;
+  assert.ok(W.validateSetup(bad, 4, 1, 2, true));
+  const exact = blankCounts();
+  exact.werwolf = 1;
+  exact.dorfbewohner = 3;
+  assert.strictEqual(W.validateSetup(exact, 4, 1, 2), '');
+  assert.ok(W.validateSetup(exact, 4, 1, 2) === '' && W.validateSetup(Object.assign({ wolfMin: 1, wolfMax: 1 }, exact), 5, 1, 2, true));
 });
 
 console.log(passed + ' tests');

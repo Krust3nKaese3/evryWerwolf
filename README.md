@@ -25,8 +25,8 @@ Nach einem Push die Mini-App in EveryApp mit ⟳ aktualisieren.
 ## Ablauf
 
 1. **Namen.** Nacheinander, im Uhrzeigersinn. Diese Reihenfolge ist die Sitzordnung und wird sofort gespeichert.
-2. **Rollen.** Ein Vorschlag hängt von der Spielerzahl ab und lässt sich ändern. Die Summe muss die Spielerzahl treffen. Heiltränke der Hexe: 1 bis 8, Standard 2. Nachahmungen: 1 bis 5, Standard 1. Danach werden die Rollen zufällig verteilt.
-3. **Aufdecken.** Alle Namen stehen in einer Liste. Jede Person tippt den eigenen Namen. Danach ist der Name grau, bleibt aber antippbar, solange das Spiel noch nicht gestartet ist. **Spiel starten** beginnt Nacht 1.
+2. **Rollen.** Ein Vorschlag hängt von der Spielerzahl ab und lässt sich ändern. **Mehr Rollen als Spieler** ist standardmäßig an: die Karten sind ein Pool, verteilt wird nur die Spielerzahl, der Rest bleibt draußen. Werwolf hat dann ein Minimum und ein Maximum. Mindestens so viele Wölfe werden immer ausgeteilt, höchstens so viele, der Rest ist Zufall aus dem Pool. Aus ist die alte Regel: die Summe muss genau die Spielerzahl sein. Heiltränke der Hexe: 1 bis 8, Standard 2. Nachahmungen: 1 bis 5, Standard 1.
+3. **Aufdecken.** Alle Namen stehen in einer Liste. Jede Person tippt den eigenen Namen. Danach ist der Name grau, bleibt aber antippbar. **Spiel starten** ist grau, bis jede Person die Rolle mindestens einmal gesehen hat, und beginnt dann Nacht 1.
 4. **Nacht 1** kommt vor Tag 1. Der Bürgermeister ist die erste Person der Sitzordnung und bleibt das an Tag 1, außer er stirbt.
 5. **Nacht.** Alle lebenden Namen stehen in einer Liste, ohne vorgegebene Reihenfolge. Die Person tippt den eigenen Namen, dann **Go**, dann die Fähigkeit oder **Ich will gar nichts machen**. Danach ist der Name grau und diese Nacht nicht mehr antippbar. Wer keine Fähigkeit hat, sieht denselben Ablauf. Sind alle grau, löst die Nacht auf.
 6. **Morgen.** Die App sagt, wer gestorben ist und wen die Schaufel zurückgeholt hat. Danach Tag 1, dann Nacht 2, und so weiter.
@@ -86,7 +86,7 @@ Sie ist **jede Nacht** nicht zu Hause, schon bevor sie gewählt hat, und auch we
 
 Auf dem Tag-Screen gibt es immer den Knopf **Duell**, damit niemand an der Anzeige erkennt, wer der Russe ist. Die App fragt nach dem eigenen Namen. Stimmt er nicht, ist die Person tot oder war das Duell schon weg, steht dort nur „Nichts passiert.“
 
-Er selbst schießt zuerst, danach die 1 bis 5 herausgeforderten Personen in der **von ihm gewählten Reihenfolge**, dann wieder von vorn. Eine Kugel in sechs Kammern, keine neue Drehung. Jeder Zug ist ein Tipp mit Übergabe. Wer die Kugel bekommt, stirbt mit den normalen Folgen. Danach geht der Tag weiter (Diskussion und Abstimmung). Der Einsatz ist verbraucht, sobald die Herausforderer bestätigt sind. Vorher kann er zurück.
+Er selbst schießt zuerst, danach die 1 bis 5 herausgeforderten Personen in der **von ihm gewählten Reihenfolge**, dann wieder von vorn. Eine Kugel in sechs Kammern, keine neue Drehung. Diese Reihenfolge ist die Spielregel. Vor dem Abzug gibt es keinen Übergabeschirm „ist bereit“, der nächste Zug zeigt direkt den Abzug. Wer die Kugel bekommt, stirbt mit den normalen Folgen. Danach geht der Tag weiter (Diskussion und Abstimmung). Der Einsatz ist verbraucht, sobald die Herausforderer bestätigt sind. Vorher kann er zurück.
 
 ### Politiker
 
@@ -120,7 +120,7 @@ Auflösung, in dieser Reihenfolge:
 
 1. Jeder Tod in einem geheilten Haus verpufft, egal ob Wölfe, Gift oder nächtlicher Schuss. Sonst sterben alle im Haus. Leere Häuser tun nichts.
 2. Liebesketten sterben mit. Liebe endet damit.
-3. Jäger, die diese Nacht gestorben sind, schießen der Reihe nach auf Personen.
+3. Jäger, die schießen müssen, stehen in einer Liste. Jeder tippt den eigenen Namen, danach grau. Die Reihenfolge wählen sie selbst.
 4. Die Schaufel macht ihre Toten wieder lebendig.
 5. Stirbt der Bürgermeister, ist das Amt schon beim Tod weitergegangen. Zusätzlich wandert es am Ende von Nacht 2 und jeder späteren Nacht einen lebenden Sitz im Uhrzeigersinn. Nach Nacht 1 gibt es diese Extra-Drehung nicht.
 6. Sieg prüfen.
@@ -149,7 +149,7 @@ Beispiel ab Nacht 2: A ist Bürgermeister, Sitze A B C D. Stirbt A in der Nacht,
 
 ## Abstimmung und Gleichstand
 
-Geheim, Handy weitergeben, nur Lebende. Wahl einer Person oder **Niemand**. Der Bürgermeister zählt 1,5, alle anderen 1. Wer das höchste Gewicht allein hat, stirbt. Liegt das höchste Gewicht gleichauf, stirbt niemand, auch bei einem Gleichstand mit „Niemand“. Die 1,5 lösen viele Pattstellungen, aber nicht alle: zwei Personen können vor dem Bürgermeister gleichauf liegen.
+Geheim, nur Lebende, ohne vorgegebene Reihenfolge. Jede Person tippt den eigenen Namen, stimmt ab, danach ist der Name grau und nicht mehr antippbar. Gezählt wird erst, wenn alle abgestimmt haben. Eine neue Abstimmung läuft genauso. Wahl einer Person oder **Niemand**. Der Bürgermeister zählt 1,5, alle anderen 1. Wer das höchste Gewicht allein hat, stirbt. Liegt das höchste Gewicht gleichauf, stirbt niemand, auch bei einem Gleichstand mit „Niemand“. Die 1,5 lösen viele Pattstellungen, aber nicht alle: zwei Personen können vor dem Bürgermeister gleichauf liegen.
 
 Die Stimmen selbst bleiben geheim, das Ergebnis zeigt nur die Gewichte.
 
@@ -180,7 +180,10 @@ UX-Verbesserungen laufen weiter auf `main`. Später vergleichen wir die Oberflä
 Gegenüber `roh`:
 
 - **Nacht.** Keine vorgegebene Reihenfolge und keine zweite Runde. Liste aller Lebenden, eigener Name, **Go**, Fähigkeit oder **Ich will gar nichts machen**. Danach grau und nicht mehr antippbar.
-- **Rollen.** Liste aller Namen. Nach dem Ansehen grau, aber weiter antippbar, bis **Spiel starten**.
+- **Rollen.** Liste aller Namen. Nach dem Ansehen grau, aber weiter antippbar. **Spiel starten** bleibt grau, bis jede Person die Rolle mindestens einmal gesehen hat.
+- **Überall handeln.** Abstimmung, Jägerschuss, Liebesgeständnis und Diebstahlshinweis laufen über die Namensliste: eigener Name, Aktion, danach grau und nicht mehr antippbar. Kein „X ist bereit“. Liebe und Diebstahl erscheinen auf dem eigenen Nachtzug, sobald die Person ihren Namen tippt.
+- **Duell.** Die Reihenfolge der Abzüge bleibt die Regel. Der Übergabeschirm „ist bereit“ entfällt, der Abzug kommt direkt.
+- **Rollenpool.** Schalter **Mehr Rollen als Spieler**, standardmäßig an. Pool darf größer sein als die Runde, Rest bleibt draußen. Werwolf hat Minimum und Maximum.
 - **Ablauf.** Nacht 1 direkt nach dem Aufdecken, dann Morgen und Tag 1. Die erste Person ist an Tag 1 Bürgermeister. Die zusätzliche Drehung des Amts beginnt erst am Ende von Nacht 2. Das Duell bleibt am Tag.
 - **Hexe.** Sieht das Opfer nicht und legt Heiltränke blind. Die Anzahl ist einstellbar, 1 bis 8, Standard 2, für das ganze Spiel. In einer Nacht darf sie so viele legen, wie sie noch hat, jedes Haus nur einmal. Der Trank hält in dieser Nacht jeden Tod in dem Haus auf. Aufgelöst wird erst, wenn alle gehandelt haben.
 - **Bilder.** Jede Rolle hat ein Emoji, der Heiltrank ist ein rotes Fläschchen und der Gifttrank ein grünes, beide als SVG in der App. Leben ist ❤️, Tod ist 💀. Jeder Bildschirm hat oben ein großes Zeichen, der Text steht darunter. Keine Icon-Schrift, alles offline.

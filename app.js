@@ -253,21 +253,46 @@
       '</ul></details>';
   }
 
+  function wolfBounds() {
+    return '<div class="stepper"><span class="role-name">Werwolf mindestens</span><span class="row" style="flex:0 0 auto;align-items:center">' +
+      '<button type="button" class="icon-btn" data-act="wolf-min" data-dir="-1" aria-label="weniger minimale Werwölfe">−</button>' +
+      '<strong>' + (state.wolfMin || 0) + '</strong>' +
+      '<button type="button" class="icon-btn" data-act="wolf-min" data-dir="1" aria-label="mehr minimale Werwölfe">+</button></span></div>' +
+      '<div class="stepper"><span class="role-name">Werwolf höchstens</span><span class="row" style="flex:0 0 auto;align-items:center">' +
+      '<button type="button" class="icon-btn" data-act="wolf-max" data-dir="-1" aria-label="weniger maximale Werwölfe">−</button>' +
+      '<strong>' + (state.wolfMax || 0) + '</strong>' +
+      '<button type="button" class="icon-btn" data-act="wolf-max" data-dir="1" aria-label="mehr maximale Werwölfe">+</button></span></div>';
+  }
+
   function renderSetup() {
+    var poolOn = !!state.rolePool;
     var sum = 0;
     var rows = W.ROLE_ORDER.map(function (role) {
       var count = state.counts[role] || 0;
-      sum += count;
+if (!(poolOn && role === 'werwolf')) sum += count;
+      if (poolOn && role === 'werwolf') return wolfBounds();
       return '<div class="stepper"><span class="role-name" role="img" aria-label="' + esc(W.roleName(role)) + '">' + roleIcon(role) + '</span><span class="role-name">' + esc(W.roleName(role)) + '</span><span class="row" style="flex:0 0 auto;align-items:center">' +
         '<button type="button" class="icon-btn" data-act="bump" data-role="' + role + '" data-dir="-1" aria-label="' + esc(W.roleName(role)) + ' weniger">−</button>' +
         '<strong>' + count + '</strong>' +
         '<button type="button" class="icon-btn" data-act="bump" data-role="' + role + '" data-dir="1" aria-label="' + esc(W.roleName(role)) + ' mehr">+</button>' +
         '</span></div>';
     }).join('');
-    var problem = W.validateSetup(state.counts, state.players.length, state.nachUses, state.healPotions == null ? 2 : state.healPotions);
+    var setupCounts = state.counts;
+    if (poolOn) {
+      setupCounts = {};
+      W.ROLE_ORDER.forEach(function (role) { setupCounts[role] = state.counts[role] || 0; });
+      setupCounts.wolfMin = state.wolfMin;
+      setupCounts.wolfMax = state.wolfMax;
+      sum += state.wolfMax || 0;
+    }
+    var problem = W.validateSetup(setupCounts, state.players.length, state.nachUses, state.healPotions == null ? 2 : state.healPotions, poolOn);
+    var lead = poolOn
+      ? 'Mehr Rollen als Spieler ist an. Der Pool hat ' + sum + ' Karten, verteilt werden ' + state.players.length + '. Übrige Karten bleiben draußen. Werwölfe liegen zwischen Minimum und Maximum.'
+      : 'Vorschlag anpassen. Die Summe muss ' + state.players.length + ' sein. Belegt: ' + sum + '.';
     return header('Rollen', state.players.length + ' Mitspieler') +
       hero('🎴', 'Rollenwahl') +
-      '<div class="stack"><p class="lead">Vorschlag anpassen. Die Summe muss ' + state.players.length + ' sein. Belegt: ' + sum + '.</p>' +
+      '<div class="stack"><p class="lead">' + lead + '</p>' +
+      '<button type="button" class="btn secondary" data-act="toggle-pool" aria-pressed="' + (poolOn ? 'true' : 'false') + '">Mehr Rollen als Spieler: ' + (poolOn ? 'an' : 'aus') + '</button>' +
       (problem ? '<div class="banner error">' + esc(problem) + '</div>' : '') +
       '<div class="card stack">' + rows +
       '<div class="stepper"><span class="role-name">Einsätze ' + esc(W.roleName('nachahmerin')) + '</span><span class="row" style="flex:0 0 auto;align-items:center">' +
@@ -299,11 +324,13 @@
         (seen ? '<span class="meta">Rolle schon gesehen, noch mal möglich</span>' : '<span class="meta">Rolle ansehen</span>') +
         '</span></button>';
     }).join('');
+    var startReady = W.everyoneRevealed(state);
     return header('Rollen', 'Wer ist dran?') +
       hero('🎭', 'Rollen aufdecken') +
-      '<div class="stack"><p class="lead">Jede Person tippt den eigenen Namen und sieht nur die eigene Rolle. Danach ist der Name grau, bleibt aber antippbar, bis das Spiel startet.</p>' +
+      '<div class="stack">' + errorHtml() +
+      '<p class="lead">Jede Person tippt den eigenen Namen und sieht nur die eigene Rolle. Danach ist der Name grau, bleibt aber antippbar. Spiel starten geht erst, wenn jede Person die Rolle mindestens einmal gesehen hat.</p>' +
       '<div class="stack">' + names + '</div>' +
-      '<button type="button" class="btn" data-act="start-game">Spiel starten</button></div>';
+      '<button type="button" class="btn" data-act="start-game"' + (startReady ? '' : ' disabled') + '>Spiel starten</button></div>';
   }
 
   function renderDiscuss() {
@@ -335,8 +362,9 @@
 
   function renderTurn() {
     if (state.screen === 'night' && state.step === 'list') return renderNightList();
-    if (state.screen === 'night' && state.step === 'ready') return renderNightReady();
-    var person = state.screen === 'night' ? player(state.activeId) : player((state.order || [])[state.cursor]);
+    if (state.screen === 'vote' && state.step === 'list') return renderVoteList();
+    if ((state.screen === 'night' || state.screen === 'vote') && state.step === 'ready') return renderNightReady();
+    var person = (state.screen === 'night' || state.screen === 'vote') ? player(state.activeId) : player((state.order || [])[state.cursor]);
     if (!person) {
       if (state.screen === 'night') {
         if (!Array.isArray(state.nightDone)) state.nightDone = [];
@@ -368,11 +396,26 @@
       '<div class="stack">' + names + '</div>' + abortLink() + '</div>';
   }
 
+  function renderVoteList() {
+    var done = state.voteDone || [];
+    var names = W.living(state).map(function (p) {
+      var finished = done.indexOf(p.id) >= 0;
+      return '<button type="button" class="choice' + (finished ? ' done' : '') + '" data-act="vote-pick" data-id="' + p.id + '"' +
+        (finished ? ' disabled' : '') + '><span><span class="who">' + esc(p.name) + '</span>' +
+        '<span class="meta">' + (finished ? 'Stimme abgegeben' : (p.id === state.mayorId ? 'Bürgermeister, Stimme 1,5' : 'Stimme abgeben')) + '</span></span></button>';
+    }).join('');
+    return header(phaseEyebrow(), 'Wer stimmt ab?') +
+      hero('🗳️', 'Abstimmung') +
+      '<div class="stack">' + errorHtml() +
+      '<p class="lead">Jede lebende Person tippt den eigenen Namen und stimmt geheim ab. Danach ist der Name grau. Gezählt wird, wenn alle abgestimmt haben. Der Bürgermeister zählt 1,5.</p>' +
+      '<div class="stack">' + names + '</div>' + abortLink() + '</div>';
+  }
+
   function renderNightReady() {
     var person = player(state.activeId);
     var name = person ? person.name : '';
     return header(phaseEyebrow(), name) +
-      hero('🌙', 'Nacht') +
+      (state.screen === 'vote' ? hero('🗳️', 'Abstimmung') : hero('🌙', 'Nacht')) +
       '<section class="stage"><p class="lead">Nur ' + esc(name) + ' schaut jetzt hin.</p>' +
       '<button type="button" class="btn" data-act="go">Go</button>' +
       '<button type="button" class="btn secondary" data-act="back">Zurück zur Liste</button></section>';
@@ -483,9 +526,34 @@
   }
 
   function renderHunter() {
+    if (state.step === 'list' || state.step === 'handoff') {
+      var cast = state.hunterCast && state.hunterCast.length ? state.hunterCast : (state.hunters || []);
+      var pending = state.hunters || [];
+      var names = cast.map(function (id) {
+        var p = player(id);
+        if (!p) return '';
+        var finished = pending.indexOf(id) < 0;
+        return '<button type="button" class="choice' + (finished ? ' done' : '') + '" data-act="hunter-pick" data-id="' + id + '"' +
+          (finished ? ' disabled' : '') + '><span><span class="who">' + esc(p.name) + '</span>' +
+          '<span class="meta">' + (finished ? 'hat geschossen' : 'Schuss abgeben') + '</span></span></button>';
+      }).join('');
+      return header('Jäger', 'Wer schießt?') +
+        hero('🏹', 'Jäger') +
+        '<div class="stack">' + errorHtml() +
+        '<p class="lead">Jeder Jäger, der schießen muss, tippt den eigenen Namen. Die Reihenfolge ist egal. Danach ist der Name grau.</p>' +
+        '<div class="stack">' + names + '</div></div>';
+    }
+    if (state.step === 'ready') {
+      var ready = player(state.hunterId);
+      var readyName = ready ? ready.name : '';
+      return header('Jäger', readyName) +
+        hero('🏹', 'Jäger') +
+        '<section class="stage"><p class="lead">Nur ' + esc(readyName) + ' schaut jetzt hin.</p>' +
+        '<button type="button" class="btn" data-act="go">Go</button>' +
+        '<button type="button" class="btn secondary" data-act="back">Zurück zur Liste</button></section>';
+    }
     var hunter = player(state.hunterId);
     if (!hunter) return header('Schuss', 'Weiter');
-    if (state.step !== 'show') return handoff(hunter.name, '', 'Weiter');
     var list = W.living(state).map(function (p) {
       return choiceButton(p.id, p.name, '', 'person');
     }).join('');
@@ -527,11 +595,7 @@
     }
     var puller = player(duel.order[duel.pull % duel.order.length]);
     var name = puller ? puller.name : '';
-    if (duel.stage === 'pull-handoff') {
-      var challenged = duel.targets.map(function (id) { return player(id).name; }).join(', ');
-      return handoff(name, (player(duel.russeId).name) + ' fordert ' + challenged + '. Zug ' + (duel.pull + 1) + ' von 6.');
-    }
-    if (duel.stage === 'pull-ready') {
+if (duel.stage === 'pull-handoff' || duel.stage === 'pull-ready') {
       return header('Duell', name) + hero('🎲', 'Duell') + '<section class="stage"><p class="eyebrow">Zug ' + (duel.pull + 1) + ' von 6</p>' +
         '<p class="lead">Eine Kugel liegt in einer der sechs Kammern. Tippe für den Abzug.</p>' +
         '<button type="button" class="btn bad" data-act="ack">Abzug ziehen</button></section>';
@@ -604,6 +668,17 @@
       act({ type: 'set-nach', value: next });
       return;
     }
+    if (type === 'toggle-pool') {
+      act({ type: 'toggle-pool' });
+      return;
+    }
+    if (type === 'wolf-min' || type === 'wolf-max') {
+      var key = type === 'wolf-min' ? 'wolfMin' : 'wolfMax';
+      var value = (state[key] || 0) + Number(el.getAttribute('data-dir'));
+      if (value < 0) value = 0;
+      act({ type: type === 'wolf-min' ? 'set-wolf-min' : 'set-wolf-max', value: value });
+      return;
+    }
     if (type === 'heals') {
       var heals = (state.healPotions == null ? 2 : state.healPotions) + Number(el.getAttribute('data-dir'));
       if (heals < 1) heals = 1;
@@ -616,7 +691,7 @@
       act({ type: 'confirm', id: ids.length ? ids[0] : undefined, ids: ids });
       return;
     }
-    if (type === 'select' || type === 'remove-name' || type === 'night-pick' || type === 'reveal-pick') {
+    if (type === 'select' || type === 'remove-name' || type === 'night-pick' || type === 'reveal-pick' || type === 'vote-pick' || type === 'hunter-pick') {
       var actType = type === 'select' ? 'select' : type;
       act({ type: actType, id: Number(el.getAttribute('data-id')) });
       return;
