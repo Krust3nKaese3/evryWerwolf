@@ -637,4 +637,123 @@ test('Namenliste: Rolle bleibt antippbar, Nachtname nicht', function () {
   assert.strictEqual(state.step, 'list');
 });
 
+function blankCounts() {
+  const counts = {};
+  W.ROLE_ORDER.forEach(function (role) { counts[role] = 0; });
+  return counts;
+}
+
+function openUntil(state, kind) {
+  let guard = 0;
+  while (guard++ < 50) {
+    const view = W.view(state);
+    if (view.prompt && view.prompt.kind === kind) return view;
+    if (view.step === 'list') {
+      const next = W.living(state).filter(function (p) { return state.nightDone.indexOf(p.id) < 0; })[0];
+      W.send(state, { type: 'night-pick', id: next.id });
+    } else if (view.step === 'ready') {
+      W.send(state, { type: 'go' });
+    } else if (view.prompt && view.prompt.kind === 'sleep') {
+      W.send(state, { type: 'ack' });
+    } else {
+      W.send(state, { type: 'skip' });
+    }
+  }
+  throw new Error('kein Prompt ' + kind + ' ' + JSON.stringify(W.view(state)));
+}
+
+test('Ein einzelner Werwolf sieht jedes Haus und kann wählen', function () {
+  const counts = blankCounts();
+  counts.werwolf = 1;
+  counts.dorfbewohner = 3;
+  const state = game(['Anna', 'Bea', 'Chris', 'xhdh'], counts, 1);
+  setRoles(state, ['dorfbewohner', 'dorfbewohner', 'dorfbewohner', 'werwolf']);
+  startNight(state);
+  const view = openUntil(state, 'wolf');
+  const targets = W.targetsFor(state, view.prompt, view.playerId);
+  assert.strictEqual(targets.length, 4);
+  assert.strictEqual(view.playerId, 4);
+  W.send(state, { type: 'confirm', id: 1 });
+  assert.strictEqual(state.error || '', '');
+  assert.strictEqual(state.wolfVotes[4], 1);
+  assert.notStrictEqual(state.screen, 'end');
+});
+
+test('Mehrere Werwölfe sehen Häuser und die bisherige Rudelwahl', function () {
+  const counts = blankCounts();
+  counts.werwolf = 2;
+  counts.dorfbewohner = 3;
+  const state = game(['Anna', 'Bea', 'Chris', 'Dora', 'Erik'], counts, 1);
+  setRoles(state, ['werwolf', 'werwolf', 'dorfbewohner', 'dorfbewohner', 'dorfbewohner']);
+  startNight(state);
+  const first = openUntil(state, 'wolf');
+  assert.strictEqual(W.targetsFor(state, first.prompt, first.playerId).length, 5);
+  assert.strictEqual(W.wolfBoard(state, first.playerId).length, 2);
+  W.send(state, { type: 'confirm', id: 3 });
+  const second = openUntil(state, 'wolf');
+  assert.strictEqual(W.targetsFor(state, second.prompt, second.playerId).length, 5);
+  const board = W.wolfBoard(state, second.playerId);
+  assert.ok(board.some(function (wolf) { return wolf.choice.indexOf('Haus von Chris') >= 0; }));
+  W.send(state, { type: 'confirm', id: 4 });
+  assert.strictEqual(state.error || '', '');
+  assert.strictEqual(state.wolfVotes[1], 3);
+  assert.strictEqual(state.wolfVotes[2], 4);
+});
+
+function legacyWolfNight() {
+  return {
+    v: 1,
+    screen: 'night',
+    step: 'show',
+    players: [
+      { id: 1, name: 'Anna', role: 'dorfbewohner', alive: true, loverIds: [], healLeft: false },
+      { id: 2, name: 'Bea', role: 'dorfbewohner', alive: true, loverIds: [], healLeft: false },
+      { id: 3, name: 'xhdh', role: 'werwolf', alive: true, loverIds: [], healLeft: false },
+      { id: 4, name: 'Chris', role: 'dorfbewohner', alive: true, loverIds: [], healLeft: false }
+    ],
+    order: [1, 2, 3, 4],
+    cursor: 2,
+    pass: 1,
+    promptIndex: 0,
+    prompts: [{ kind: 'wolf', target: 'house' }],
+    selection: [],
+    wolfVotes: {},
+    nightNumber: 1,
+    day: 1,
+    mayorId: 1,
+    log: [],
+    heals: [],
+    poisons: [],
+    extraAttacks: [],
+    hosts: {},
+    seenLove: {},
+    bonds: []
+  };
+}
+
+test('Alter Nachtstand mit cursor wird fortgesetzt und nicht gesperrt', function () {
+  const state = legacyWolfNight();
+  W.adoptSaved(state);
+  assert.strictEqual(state.activeId, 3);
+  assert.strictEqual(state.step, 'show');
+  assert.deepStrictEqual(state.nightDone, [1, 2]);
+  const view = W.view(state);
+  assert.strictEqual(view.prompt.kind, 'wolf');
+  assert.strictEqual(W.targetsFor(state, view.prompt, view.playerId).length, 4);
+  W.send(state, { type: 'confirm', id: 1 });
+  assert.notStrictEqual(state.error, 'Interner Fehler.');
+  assert.strictEqual(state.wolfVotes[3], 1);
+  assert.ok(state.nightDone.indexOf(3) >= 0);
+  assert.strictEqual(state.step, 'list');
+  W.send(state, { type: 'night-pick', id: 4 });
+  assert.strictEqual(state.step, 'ready');
+  const secondRound = legacyWolfNight();
+  secondRound.pass = 2;
+  W.adoptSaved(secondRound);
+  assert.strictEqual(secondRound.screen, 'lobby');
+  assert.strictEqual(secondRound.players.length, 4);
+  assert.strictEqual(secondRound.players[2].name, 'xhdh');
+  assert.strictEqual(secondRound.players[2].role, undefined);
+});
+
 console.log(passed + ' tests');

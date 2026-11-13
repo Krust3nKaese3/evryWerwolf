@@ -1143,9 +1143,60 @@
     return !!(p && p.alive);
   }
 
+  function adoptSaved(state) {
+    if (!state || !state.players) return state;
+    state.players.forEach(function (p) {
+      if (p.healsLeft == null) p.healsLeft = p.healLeft ? (state.healPotions || 2) : 0;
+    });
+    if (state.screen === 'reveal' && state.activeId == null && (state.step === 'show' || state.step === 'handoff')) {
+      if (!state.revealed) state.revealed = {};
+      var revealId = state.order && state.order[state.cursor];
+      if (state.step === 'show' && revealId != null && playerById(state, revealId)) state.activeId = revealId;
+      else state.step = 'list';
+    }
+    var legacyNight = state.screen === 'night' && !Array.isArray(state.nightDone);
+    var lostActor = state.screen === 'night' && state.step === 'show' && state.activeId == null;
+    if (!legacyNight && !lostActor) return state;
+    if (legacyNight && (state.pass || 1) > 1) {
+      var lobby = toLobby(state);
+      replaceState(state, lobby);
+      note(state, 'Alter Spielstand verworfen, Namen behalten');
+      return state;
+    }
+    var order = Array.isArray(state.order) ? state.order : [];
+    var cursor = Number(state.cursor);
+    if (!isFinite(cursor) || cursor < 0) cursor = 0;
+    if (!Array.isArray(state.nightDone)) {
+      state.nightDone = order.slice(0, cursor).filter(function (id) { return livingTarget(state, id); });
+    }
+    state.heals = state.heals || [];
+    state.wolfVotes = state.wolfVotes || {};
+    state.extraAttacks = state.extraAttacks || [];
+    state.poisons = state.poisons || [];
+    state.hosts = state.hosts || {};
+    state.selection = state.selection || [];
+    state.seenLove = state.seenLove || {};
+    state.copyHexes = state.copyHexes || [];
+    if (state.healPotions == null) state.healPotions = 2;
+    var actorId = order[cursor];
+    var prompt = state.prompts && state.prompts[state.promptIndex || 0];
+    if (state.step === 'show' && prompt && actorId != null && livingTarget(state, actorId)) {
+      state.activeId = actorId;
+      if (state.promptIndex == null) state.promptIndex = 0;
+    } else if (state.activeId == null) {
+      state.step = 'list';
+      state.prompts = [];
+      state.promptIndex = 0;
+      state.activeId = null;
+    }
+    note(state, 'Alter Nachtstand übernommen');
+    return state;
+  }
+
   function send(state, action) {
     action = action || {};
     try {
+      adoptSaved(state);
       dispatch(state, action);
     } catch (error) {
       note(state, 'Fehler ' + error.message + '\n' + (error.stack || ''));
@@ -1495,7 +1546,7 @@
         id: p.id,
         name: p.name,
         self: p.id === selfId,
-        choice: vote ? 'Haus von ' + playerById(state, vote).name : 'noch offen'
+        choice: vote && playerById(state, vote) ? 'Haus von ' + playerById(state, vote).name : 'noch offen'
       };
     });
   }
@@ -1594,6 +1645,7 @@
     living: living,
     deadPlayers: deadPlayers,
     beginNight: beginNight,
+    adoptSaved: adoptSaved,
     loveSignature: loveSignature,
     ownerHome: ownerHome
   };
