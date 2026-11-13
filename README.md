@@ -186,6 +186,7 @@ Gegenüber `roh`:
 - **Rollenpool.** Schalter **Mehr Rollen als Spieler**, standardmäßig an. Pool darf größer sein als die Runde, Rest bleibt draußen. Werwolf hat Minimum und Maximum.
 - **Ablauf.** Nacht 1 direkt nach dem Aufdecken, dann Morgen und Tag 1. Die erste Person ist an Tag 1 Bürgermeister. Die zusätzliche Drehung des Amts beginnt erst am Ende von Nacht 2. Das Duell bleibt am Tag.
 - **Hexe.** Sieht das Opfer nicht und legt Heiltränke blind. Die Anzahl ist einstellbar, 1 bis 8, Standard 2, für das ganze Spiel. In einer Nacht darf sie so viele legen, wie sie noch hat, jedes Haus nur einmal. Der Trank hält in dieser Nacht jeden Tod in dem Haus auf. Aufgelöst wird erst, wenn alle gehandelt haben.
+- **Bilder.** Jede Rolle hat ein Emoji, der Heiltrank ist ein rotes Fläschchen und der Gifttrank ein grünes, beide als SVG in der App. Leben ist ❤️, Tod ist 💀. Jeder Bildschirm hat oben ein großes Zeichen, der Text steht darunter. Keine Icon-Schrift, alles offline.
 
 ## Aufbau
 
