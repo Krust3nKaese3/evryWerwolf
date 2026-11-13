@@ -345,7 +345,8 @@ if (!(poolOn && role === 'werwolf')) sum += count;
         '<p class="eyebrow">Nur für ' + esc(person.name) + '</p>' +
         '<p class="big-role">' + esc(W.roleName(person.role)) + '</p>' +
         '<p class="lead">' + esc(blurb(person.role, person)) + '</p>' +
-        '<button type="button" class="btn" data-act="ack">Verstanden, verdecken</button></section>';
+        '<button type="button" class="btn" data-act="ack">Verstanden, verdecken</button>' +
+        '<button type="button" class="btn secondary" data-act="back">Zurück</button></section>';
     }
     var names = state.players.map(function (p) {
       var seen = state.revealed && state.revealed[p.id];
@@ -408,7 +409,10 @@ if (!(poolOn && role === 'werwolf')) sum += count;
     if (state.step !== 'show') return handoff(person.name);
     var prompt = W.view(state).prompt;
     if (!prompt) return handoff(person.name);
-    return header(phaseEyebrow(), person.name) + '<div class="stack">' + errorHtml() + promptHtml(person, prompt) + '</div>';
+    var back = (state.promptIndex || 0) === 0
+      ? '<button type="button" class="btn secondary" data-act="back">Zurück</button>'
+      : '';
+    return header(phaseEyebrow(), person.name) + '<div class="stack">' + errorHtml() + promptHtml(person, prompt) + back + '</div>';
   }
 
   function renderNightList() {
@@ -448,7 +452,7 @@ if (!(poolOn && role === 'werwolf')) sum += count;
       (state.screen === 'vote' ? hero('🗳️', 'Abstimmung') : hero('🌙', 'Nacht')) +
       '<section class="stage"><p class="lead">Nur ' + esc(name) + ' schaut jetzt hin.</p>' +
       '<button type="button" class="btn" data-act="go">Go</button>' +
-      '<button type="button" class="btn secondary" data-act="back">Zurück zur Liste</button></section>';
+      '<button type="button" class="btn secondary" data-act="back">Zurück</button></section>';
   }
 
   function promptHtml(person, prompt) {
@@ -585,7 +589,7 @@ if (!(poolOn && role === 'werwolf')) sum += count;
         hero('🏹', 'Jäger') +
         '<section class="stage"><p class="lead">Nur ' + esc(readyName) + ' schaut jetzt hin.</p>' +
         '<button type="button" class="btn" data-act="go">Go</button>' +
-        '<button type="button" class="btn secondary" data-act="back">Zurück zur Liste</button></section>';
+        '<button type="button" class="btn secondary" data-act="back">Zurück</button></section>';
     }
     var hunter = player(state.hunterId);
     if (!hunter) return header('Schuss', 'Weiter');
@@ -597,20 +601,29 @@ if (!(poolOn && role === 'werwolf')) sum += count;
       : 'Du stirbst und schießt noch auf eine Person.';
     return header('Jäger', hunter.name) + hero('🏹', 'Jäger') + '<div class="stack">' + errorHtml() +
       '<p class="lead">' + esc(when) + '</p><div class="stack">' + list + '</div>' +
-      '<button type="button" class="btn bad" data-act="confirm">Schießen</button></div>';
+      '<button type="button" class="btn bad" data-act="confirm">Schießen</button>' +
+      '<button type="button" class="btn secondary" data-act="back">Zurück</button></div>';
   }
 
   function renderDuel() {
     var duel = state.duel || { stage: 'who' };
     if (duel.stage === 'who') {
       var people = W.living(state).map(function (p) {
-        return choiceButton(p.id, p.name, '', 'person');
+        return '<button type="button" class="choice" data-act="duel-pick" data-id="' + p.id + '"><span><span class="who">' + esc(p.name) + '</span>' +
+          '<span class="meta">Das bin ich</span></span></button>';
       }).join('');
       return header('Duell', 'Wer bist du?') + hero('🎲', 'Duell') + '<div class="stack">' + errorHtml() +
         '<p class="lead">Tippe deinen Namen.</p>' +
         '<div class="stack">' + people + '</div>' +
-        '<button type="button" class="btn" data-act="confirm">Das bin ich</button>' +
         '<button type="button" class="btn secondary" data-act="cancel">Zurück</button></div>';
+    }
+    if (duel.stage === 'claim') {
+      var claim = player(duel.claimId);
+      var claimName = claim ? claim.name : '';
+      return header('Duell', claimName) + hero('🎲', 'Duell') + '<div class="stack">' + errorHtml() +
+        '<p class="lead">Nur ' + esc(claimName) + ' schaut jetzt hin.</p>' +
+        '<button type="button" class="btn" data-act="confirm">Das bin ich</button>' +
+        '<button type="button" class="btn secondary" data-act="back">Zurück</button></div>';
     }
     if (duel.stage === 'noop') {
       return header('Duell', 'Nichts passiert') + hero('🚫', 'Nichts') +
@@ -760,7 +773,7 @@ if (duel.stage === 'pull-handoff' || duel.stage === 'pull-ready') {
       act({ type: 'confirm', id: ids.length ? ids[0] : undefined, ids: ids });
       return;
     }
-    if (type === 'select' || type === 'remove-name' || type === 'night-pick' || type === 'reveal-pick' || type === 'vote-pick' || type === 'hunter-pick') {
+    if (type === 'select' || type === 'remove-name' || type === 'night-pick' || type === 'reveal-pick' || type === 'vote-pick' || type === 'hunter-pick' || type === 'duel-pick') {
       var actType = type === 'select' ? 'select' : type;
       act({ type: actType, id: Number(el.getAttribute('data-id')) });
       return;

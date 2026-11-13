@@ -1073,4 +1073,78 @@ test('Seherin sieht standardmäßig das Lager und mit Schalter die genaue Rolle'
   assert.strictEqual(W.view(pending).prompt.label, 'Böse');
 });
 
+test('Zurück nach dem Namen verbraucht nichts und macht den Namen nicht grau', function () {
+  const reveal = make(['werwolf', 'dorfbewohner', 'dorfbewohner', 'dorfbewohner']);
+  W.send(reveal, { type: 'reveal-pick', id: 2 });
+  assert.strictEqual(reveal.step, 'show');
+  W.send(reveal, { type: 'back' });
+  assert.strictEqual(reveal.step, 'list');
+  assert.ok(!reveal.revealed[2]);
+  W.send(reveal, { type: 'reveal-pick', id: 2 });
+  W.send(reveal, { type: 'ack' });
+  assert.strictEqual(reveal.revealed[2], true);
+
+  const state = make(['werwolf', 'dorfbewohner', 'dorfbewohner', 'dorfbewohner']);
+  revealAndStart(state);
+  W.send(state, { type: 'night-pick', id: 1 });
+  W.send(state, { type: 'back' });
+  assert.strictEqual(state.step, 'list');
+  assert.strictEqual((state.nightDone || []).indexOf(1), -1);
+  W.send(state, { type: 'night-pick', id: 1 });
+  W.send(state, { type: 'go' });
+  W.send(state, { type: 'select', id: 2 });
+  W.send(state, { type: 'back' });
+  assert.deepStrictEqual(state.wolfVotes, {});
+  assert.strictEqual((state.nightDone || []).indexOf(1), -1);
+  assert.strictEqual(state.step, 'list');
+  [2, 3].forEach(function (id) { openNight(state, id); W.send(state, { type: 'ack' }); });
+  openNight(state, 4);
+  W.send(state, { type: 'ack' });
+  openNight(state, 1);
+  W.send(state, { type: 'skip' });
+  if (state.screen === 'announce') W.send(state, { type: 'ack' });
+  W.send(state, { type: 'to-vote' });
+  W.send(state, { type: 'vote-pick', id: 1 });
+  W.send(state, { type: 'go' });
+  W.send(state, { type: 'select', id: 2 });
+  W.send(state, { type: 'back' });
+  assert.strictEqual(state.step, 'list');
+  assert.strictEqual((state.voteDone || []).indexOf(1), -1);
+  assert.ok(!state.votes[1]);
+
+  const hunt = make(['jaeger', 'werwolf', 'dorfbewohner', 'dorfbewohner']);
+  revealAndStart(hunt);
+  openNight(hunt, 1);
+  W.send(hunt, { type: 'ack' });
+  openNight(hunt, 2);
+  W.send(hunt, { type: 'confirm', id: 1 });
+  [3, 4].forEach(function (id) { openNight(hunt, id); W.send(hunt, { type: 'ack' }); });
+  assert.strictEqual(hunt.screen, 'hunter');
+  W.send(hunt, { type: 'hunter-pick', id: 1 });
+  W.send(hunt, { type: 'back' });
+  assert.strictEqual(hunt.step, 'list');
+  assert.ok(hunt.hunters.indexOf(1) >= 0);
+  W.send(hunt, { type: 'hunter-pick', id: 1 });
+  W.send(hunt, { type: 'go' });
+  W.send(hunt, { type: 'select', id: 3 });
+  W.send(hunt, { type: 'back' });
+  assert.strictEqual(hunt.step, 'list');
+  assert.ok(hunt.hunters.indexOf(1) >= 0);
+  assert.strictEqual(p(hunt, 3).alive, true);
+
+  const duel = make(['russe', 'dorfbewohner', 'dorfbewohner', 'werwolf']);
+  revealAndStart(duel);
+  [1, 2, 3].forEach(function (id) { openNight(duel, id); W.send(duel, { type: 'ack' }); });
+  openNight(duel, 4);
+  W.send(duel, { type: 'skip' });
+  if (duel.screen === 'announce') W.send(duel, { type: 'ack' });
+  W.send(duel, { type: 'to-duel' });
+  W.send(duel, { type: 'duel-pick', id: 2 });
+  assert.strictEqual(duel.duel.stage, 'claim');
+  W.send(duel, { type: 'back' });
+  assert.strictEqual(duel.duel.stage, 'who');
+  assert.strictEqual(p(duel, 1).russeUsed, false);
+  assert.strictEqual(duel.screen, 'duel');
+});
+
 console.log(passed + ' Regeltests');

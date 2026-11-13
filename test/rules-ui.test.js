@@ -114,6 +114,9 @@ async function gateAndOrder(browser, base) {
   const start = page.getByRole('button', { name: 'Spiel starten' });
   assert.strictEqual(await start.isDisabled(), true);
   await page.locator('button[data-act="reveal-pick"]').first().click();
+  await page.getByRole('button', { name: 'Zurück', exact: true }).click();
+  assert.strictEqual(await page.locator('button[data-act="reveal-pick"].seen').count(), 0);
+  await page.locator('button[data-act="reveal-pick"]').first().click();
   await page.getByRole('button', { name: 'Verstanden, verdecken' }).click();
   await page.locator('button[data-act="reveal-pick"]').first().click();
   await page.getByRole('button', { name: 'Verstanden, verdecken' }).click();
@@ -130,9 +133,10 @@ async function gateAndOrder(browser, base) {
   const names = page.locator('button[data-act="night-pick"]:not([disabled])');
   const last = (await names.last().locator('.who').innerText()).trim();
   await names.last().click();
-  await page.getByRole('button', { name: 'Zurück zur Liste' }).click();
+  await page.getByRole('button', { name: 'Zurück', exact: true }).click();
   await names.first().click();
   await page.getByRole('button', { name: 'Go' }).click();
+  assert.strictEqual(await page.getByRole('button', { name: 'Zurück', exact: true }).count(), 1);
   const turn = await page.locator('#app').innerText();
   assert.ok(turn.indexOf('Wer ist wach') < 0, turn);
   assert.ok(last.length > 0);

@@ -110,7 +110,7 @@ Amor, die Seherin und der Waschbär treffen Personen, auch die Nutte. Wo die Nut
 
 ## Nacht
 
-Alle Lebenden stehen in einer Liste. Die Person tippt den eigenen Namen und **Go**. Danach nur der eigene Screen: Fähigkeit, oder **Ich will gar nichts machen**. Die Nutte muss ein Haus wählen. Wer fertig ist, ist grau und nicht mehr antippbar. Liebe und ein Diebstahlshinweis erscheinen auf diesem privaten Screen, wenn sie fällig sind.
+Alle Lebenden stehen in einer Liste. Die Person tippt den eigenen Namen. Auf dem nächsten Screen steht immer **Zurück**: falscher Name, zurück zur Liste, nichts ist verbraucht und der Name bleibt offen. Erst die Aktion selbst, **Ich will gar nichts machen** oder **Fertig** macht den Namen grau. Danach nur der eigene Screen: Fähigkeit, oder **Ich will gar nichts machen**. Die Nutte muss ein Haus wählen. Wer fertig ist, ist grau und nicht mehr antippbar. Liebe und ein Diebstahlshinweis erscheinen auf diesem privaten Screen, wenn sie fällig sind. Dasselbe Zurück gilt beim Rollenaufdecken, bei der Abstimmung, beim Jägerschuss und beim Duell, bevor der Name bestätigt ist.
 
 Die Hexe darf in diesem Zug so viele Heiltränke legen, wie sie noch hat, jedes Haus einmal, und danach den Gifttrank. Beides kann sie lassen. Eine nachgeahmte Hexe bekommt die eingestellte Zahl Heiltränke frisch für diese Nacht, plus einen Gifttrank.
 

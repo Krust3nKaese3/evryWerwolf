@@ -1544,6 +1544,13 @@
   }
 
   function revealSend(state, action) {
+    if (action.type === 'back' && state.step === 'show') {
+      state.activeId = null;
+      state.step = 'list';
+      state.error = '';
+      note(state, 'Rolle zurück');
+      return;
+    }
     if (action.type === 'reveal-pick') {
       var person = playerById(state, action.id);
       if (!person) return;
@@ -1669,9 +1676,32 @@
       return;
     }
     if (state.step === 'handoff') {
+      if (action.type === 'back') {
+        state.activeId = null;
+        state.step = 'list';
+        state.prompts = [];
+        state.promptIndex = 0;
+        state.selection = [];
+        state.error = '';
+        return;
+      }
       if (action.type !== 'ack') return;
       openTurn(state);
       note(state, 'Dran ' + playerById(state, currentId(state)).name + ' ' + state.screen);
+      return;
+    }
+    if (state.step === 'show' && action.type === 'back') {
+      if ((state.promptIndex || 0) > 0) {
+        state.error = 'Die Aktion hat schon angefangen.';
+        return;
+      }
+      state.activeId = null;
+      state.prompts = [];
+      state.promptIndex = 0;
+      state.selection = [];
+      state.step = 'list';
+      state.error = '';
+      note(state, 'Zug zurück');
       return;
     }
     handleShowAction(state, action);
@@ -1704,6 +1734,14 @@
       state.step = 'show';
       state.selection = [];
       note(state, 'Jäger schießt ' + (playerById(state, state.hunterId) || {}).name);
+      return;
+    }
+    if (action.type === 'back') {
+      state.step = 'list';
+      state.activeId = null;
+      state.selection = [];
+      state.error = '';
+      note(state, 'Jäger zurück');
       return;
     }
     if (action.type === 'select') {
@@ -1748,6 +1786,30 @@
       state.selection = [];
       state.error = '';
       setScreen(state, 'discuss');
+      return;
+    }
+    if (duel.stage === 'claim') {
+      if (action.type === 'back' || action.type === 'cancel') {
+        duel.stage = 'who';
+        duel.claimId = null;
+        state.selection = [];
+        state.error = '';
+        note(state, 'Duell Name zurück');
+        return;
+      }
+      if (action.type !== 'confirm' && action.type !== 'ack') return;
+      duel.stage = 'who';
+      state.selection = duel.claimId != null ? [duel.claimId] : [];
+      action = { type: 'confirm', id: duel.claimId };
+    }
+    if (duel.stage === 'who' && action.type === 'duel-pick') {
+      var named = playerById(state, action.id);
+      if (!named || !named.alive) return;
+      duel.stage = 'claim';
+      duel.claimId = named.id;
+      state.selection = [named.id];
+      state.error = '';
+      note(state, 'Duell Name ' + named.name);
       return;
     }
     if (duel.stage === 'who') {
