@@ -1321,6 +1321,7 @@
 
   function adoptSaved(state) {
     if (!state || !state.players) return state;
+    if (isInt(state.wolfMin) && isInt(state.wolfMax) && state.wolfMin > state.wolfMax) state.wolfMax = state.wolfMin;
     state.players.forEach(function (p) {
       if (p.healsLeft == null) p.healsLeft = p.healLeft ? (state.healPotions || 2) : 0;
     });
@@ -1407,12 +1408,18 @@
       return;
     }
     if (action.type === 'set-wolf-min') {
-      state.wolfMin = Number(action.value);
+      var nextMin = Math.floor(Number(action.value));
+      if (!isFinite(nextMin) || nextMin < 0) nextMin = 0;
+      state.wolfMin = nextMin;
+      if (!isInt(state.wolfMax) || state.wolfMax < nextMin) state.wolfMax = nextMin;
       state.error = '';
       return;
     }
     if (action.type === 'set-wolf-max') {
-      state.wolfMax = Number(action.value);
+      var nextMax = Math.floor(Number(action.value));
+      if (!isFinite(nextMax) || nextMax < 0) nextMax = 0;
+      state.wolfMax = nextMax;
+      if (!isInt(state.wolfMin) || state.wolfMin > nextMax) state.wolfMin = nextMax;
       state.error = '';
       return;
     }
