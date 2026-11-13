@@ -464,6 +464,8 @@ test('Getrennte Paare bleiben getrennt, eine zweite Liebe verkettet', function (
   W.send(state, { type: 'select', id: 4 });
   W.send(state, { type: 'select', id: 5 });
   W.send(state, { type: 'confirm', ids: [4, 5] });
+  assert.strictEqual(W.view(state).prompt.kind, 'love');
+  W.send(state, { type: 'ack' });
   assert.deepStrictEqual(p(state, 2).loverIds, [3]);
   assert.deepStrictEqual(p(state, 4).loverIds, [5]);
   assert.ok(W.loverComponent(state, 2).indexOf(5) < 0);
@@ -510,6 +512,8 @@ test('Waschbär stiehlt Personen, sofort oder in der nächsten Nacht, und beende
   W.send(amor, { type: 'select', id: 2 });
   W.send(amor, { type: 'select', id: 3 });
   W.send(amor, { type: 'confirm', ids: [2, 3] });
+  assert.strictEqual(W.view(amor).prompt.kind, 'love');
+  W.send(amor, { type: 'ack' });
   openNight(amor, 1);
   W.send(amor, { type: 'confirm', id: 2 });
   assert.strictEqual(p(amor, 1).stealUsed, true);
@@ -931,6 +935,11 @@ test('Amor muss verbinden, darf sich selbst wählen, Nachzügler sehen die Liebe
   W.send(state, { type: 'confirm', ids: [1, 2] });
   assert.deepStrictEqual(p(state, 1).loverIds, [2]);
   assert.deepStrictEqual(p(state, 2).loverIds, [1]);
+  assert.strictEqual(W.view(state).prompt.kind, 'love');
+  assert.ok(W.loverComponent(state, 1).indexOf(2) >= 0);
+  assert.strictEqual(p(state, 2).role, 'dorfbewohner');
+  W.send(state, { type: 'ack' });
+  assert.ok(state.nightDone.indexOf(1) >= 0);
   openNight(state, 3);
   assert.notStrictEqual(W.view(state).prompt.kind, 'love');
   W.send(state, { type: 'ack' });
@@ -939,6 +948,9 @@ test('Amor muss verbinden, darf sich selbst wählen, Nachzügler sehen die Liebe
   if (state.screen === 'announce') W.send(state, { type: 'ack' });
   voteNiemand(state);
   assert.strictEqual(state.nightNumber, 2);
+  openNight(state, 1);
+  assert.notStrictEqual(W.view(state).prompt.kind, 'love');
+  W.send(state, { type: 'ack' });
   openNight(state, 2);
   assert.strictEqual(W.view(state).prompt.kind, 'love');
   assert.strictEqual(p(state, 1).role, 'amor');
