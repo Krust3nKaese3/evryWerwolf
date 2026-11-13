@@ -840,6 +840,34 @@ function lcg(seed) {
   };
 }
 
+test('Werwolf-Minimum und Maximum ziehen sich gegenseitig nach', function () {
+  const state = W.newLobby();
+  ['A', 'B', 'C', 'D'].forEach(function (name) { W.send(state, { type: 'add-name', name: name }); });
+  W.send(state, { type: 'to-setup' });
+  assert.ok(state.wolfMin <= state.wolfMax);
+  W.send(state, { type: 'set-wolf-max', value: 3 });
+  W.send(state, { type: 'set-wolf-min', value: 5 });
+  assert.strictEqual(state.wolfMin, 5);
+  assert.strictEqual(state.wolfMax, 5);
+  assert.strictEqual(state.error, '');
+  W.send(state, { type: 'set-wolf-max', value: 2 });
+  assert.strictEqual(state.wolfMax, 2);
+  assert.strictEqual(state.wolfMin, 2);
+  const setup = {
+    werwolf: 0,
+    dorfbewohner: state.counts.dorfbewohner,
+    wolfMin: state.wolfMin,
+    wolfMax: state.wolfMax
+  };
+  W.ROLE_ORDER.forEach(function (role) { if (setup[role] == null) setup[role] = state.counts[role] || 0; });
+  const problem = W.validateSetup(setup, 4, 1, 2, true);
+  assert.ok(problem.indexOf('Maximum muss mindestens das Minimum') < 0);
+  const saved = { players: [{ id: 1, name: 'A' }], screen: 'setup', wolfMin: 4, wolfMax: 1 };
+  W.adoptSaved(saved);
+  assert.strictEqual(saved.wolfMin, 4);
+  assert.strictEqual(saved.wolfMax, 4);
+});
+
 test('Rollenpool achtet auf Min und Max und lässt Karten liegen', function () {
   const counts = blankCounts();
   counts.dorfbewohner = 8;
