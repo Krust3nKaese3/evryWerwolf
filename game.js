@@ -1261,6 +1261,7 @@
       if (pair[0] === pair[1]) return 'Zwei verschiedene Personen.';
       if (!livingTarget(state, pair[0]) || !livingTarget(state, pair[1])) return 'Beide müssen leben.';
       addLink(state, pair[0], pair[1]);
+      if (pair.indexOf(player.id) >= 0) return [{ kind: 'love' }];
       return [];
     }
     if (prompt.kind === 'steal') {

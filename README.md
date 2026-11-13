@@ -128,7 +128,7 @@ Auflösung, in dieser Reihenfolge:
 
 ## Liebe
 
-Amor und eine Amor-Kopie verbinden je zwei lebende Personen. Amor darf sich selbst wählen. In Nacht 1 muss er verbinden, der Screen bietet kein Aussetzen. Zwei getrennte Paare bleiben zwei Paare: A–B und C–D sterben und gewinnen nicht gemeinsam. Eine Kette entsteht nur, wenn jemand doppelt verbunden ist: A–B und B–C werden A–B–C.
+Amor und eine Amor-Kopie verbinden je zwei lebende Personen. Amor darf sich selbst wählen. Tut er das, sieht er sofort danach, groß, Partner und Rolle, und schließt den Zug erst dann ab. In Nacht 1 muss er verbinden, der Screen bietet kein Aussetzen. Zwei getrennte Paare bleiben zwei Paare: A–B und C–D sterben und gewinnen nicht gemeinsam. Eine Kette entsteht nur, wenn jemand doppelt verbunden ist: A–B und B–C werden A–B–C.
 
 Stirbt eine Person der Kette, sterben alle verbundenen mit. Wer in Nacht 1 noch nicht dran war, sieht auf dem eigenen Zug Partner und Rolle. Wer in Nacht 1 schon gehandelt hat, bevor Amor verbunden hat, sieht denselben großen Hinweis erst am Anfang der **nächsten** Nacht, wenn der eigene Name angetippt wird.
 
