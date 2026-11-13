@@ -1,0 +1,7 @@
+{
+  "name": "Werwolf",
+  "version": "1.0.0",
+  "description": "Die Werwölfe von Düsterwald auf einem Handy, das die Runde weitergibt.",
+  "entrypoint": "index.html",
+  "permissions": ["storage"]
+}
