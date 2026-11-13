@@ -98,8 +98,44 @@
     render();
   }
 
+  var ROLE_ICON = {
+    werwolf: '🐺',
+    dorfbewohner: '🧑‍🌾',
+    hexe: '🧙‍♀️',
+    seherin: '🔮',
+    amor: '💘',
+    jaeger: '🏹',
+    waschbaer: '🦝',
+    nachahmerin: '🎭',
+    nutte: '💋',
+    russe: '🎲',
+    politiker: '🎤',
+    schaufel: '⛏️'
+  };
+
+  function roleIcon(role) {
+    return ROLE_ICON[role] || '❓';
+  }
+
+  function hero(glyph, label) {
+    return '<p class="hero" role="img" aria-label="' + esc(label) + '">' + glyph + '</p>';
+  }
+
+  function flask(kind) {
+    var heal = kind !== 'poison';
+    var fill = heal ? '#d23b3b' : '#2f9e4f';
+    var label = heal ? 'Heiltrank' : 'Gifttrank';
+    return '<svg class="flask" viewBox="0 0 64 80" role="img" aria-label="' + label + '">' +
+      '<title>' + label + '</title>' +
+      '<rect x="26" y="2" width="12" height="10" rx="2" fill="#f4efe4"/>' +
+      '<path fill="' + fill + '" d="M28 12h8l8 12c7 9 10 16 10 24a16 16 0 0 1-16 16H26A16 16 0 0 1 10 48c0-8 3-15 10-24l8-12z"/>' +
+      '<path fill="#ffffff" opacity="0.35" d="M22 46c2-8 6-12 10-12 2 6 2 14 0 22-6 1-12-2-10-10z"/>' +
+      '</svg>';
+  }
+
   function icon(kind) {
-    return '<span class="mark">' + (kind === 'house' ? HOUSE : PERSON) + '</span>';
+    var house = kind === 'house';
+    return '<span class="mark" role="img" aria-label="' + (house ? 'Haus' : 'Person') + '">' + (house ? '🏠' : '👤') + '</span>';
   }
 
   function header(eyebrow, title, home) {
@@ -157,6 +193,7 @@
 
   function handoff(name, extra, eyebrow) {
     return header(eyebrow || phaseEyebrow(), 'Weitergeben') +
+      hero('📱', 'Weitergeben') +
       '<section class="stage"><p class="eyebrow">Als Nächstes</p><h2>' + esc(name) + '</h2>' +
       '<p class="lead">Gib das Handy weiter. Tippe erst, wenn ' + esc(name) + ' allein auf den Bildschirm schaut.</p>' +
       (extra ? '<p class="hint">' + esc(extra) + '</p>' : '') +
@@ -190,6 +227,7 @@
         esc(p.name) + ' entfernen">✕</button></div>';
     }).join('');
     return header('Ein Handy für die Runde', 'Werwolf') +
+      hero('🌙', 'Nacht') +
       '<div class="stack">' +
       '<p class="lead">Namen nacheinander eingeben, im Uhrzeigersinn. Diese Reihenfolge ist die Sitzordnung.</p>' +
       (bridgeStorage() ? '<p class="hint">Namen und ein laufendes Spiel bleiben in EveryApp gespeichert, auch nach dem Schließen.</p>'
@@ -220,7 +258,7 @@
     var rows = W.ROLE_ORDER.map(function (role) {
       var count = state.counts[role] || 0;
       sum += count;
-      return '<div class="stepper"><span class="role-name">' + esc(W.roleName(role)) + '</span><span class="row" style="flex:0 0 auto;align-items:center">' +
+      return '<div class="stepper"><span class="role-name" role="img" aria-label="' + esc(W.roleName(role)) + '">' + roleIcon(role) + '</span><span class="role-name">' + esc(W.roleName(role)) + '</span><span class="row" style="flex:0 0 auto;align-items:center">' +
         '<button type="button" class="icon-btn" data-act="bump" data-role="' + role + '" data-dir="-1" aria-label="' + esc(W.roleName(role)) + ' weniger">−</button>' +
         '<strong>' + count + '</strong>' +
         '<button type="button" class="icon-btn" data-act="bump" data-role="' + role + '" data-dir="1" aria-label="' + esc(W.roleName(role)) + ' mehr">+</button>' +
@@ -228,6 +266,7 @@
     }).join('');
     var problem = W.validateSetup(state.counts, state.players.length, state.nachUses, state.healPotions == null ? 2 : state.healPotions);
     return header('Rollen', state.players.length + ' Mitspieler') +
+      hero('🎴', 'Rollenwahl') +
       '<div class="stack"><p class="lead">Vorschlag anpassen. Die Summe muss ' + state.players.length + ' sein. Belegt: ' + sum + '.</p>' +
       (problem ? '<div class="banner error">' + esc(problem) + '</div>' : '') +
       '<div class="card stack">' + rows +
@@ -247,7 +286,8 @@
       var person = player(state.activeId);
       if (!person) return header('Rollen', 'Werwolf');
       return header('Deine Rolle', person.name) +
-        '<section class="stage card"><p class="eyebrow">Nur für ' + esc(person.name) + '</p>' +
+        '<section class="stage card">' + hero(roleIcon(person.role), W.roleName(person.role)) +
+        '<p class="eyebrow">Nur für ' + esc(person.name) + '</p>' +
         '<p class="big-role">' + esc(W.roleName(person.role)) + '</p>' +
         '<p class="lead">' + esc(blurb(person.role, person)) + '</p>' +
         '<button type="button" class="btn" data-act="ack">Verstanden, verdecken</button></section>';
@@ -260,6 +300,7 @@
         '</span></button>';
     }).join('');
     return header('Rollen', 'Wer ist dran?') +
+      hero('🎭', 'Rollen aufdecken') +
       '<div class="stack"><p class="lead">Jede Person tippt den eigenen Namen und sieht nur die eigene Rolle. Danach ist der Name grau, bleibt aber antippbar, bis das Spiel startet.</p>' +
       '<div class="stack">' + names + '</div>' +
       '<button type="button" class="btn" data-act="start-game">Spiel starten</button></div>';
@@ -270,10 +311,11 @@
       var badges = [];
       if (p.id === state.mayorId && p.alive) badges.push('Bürgermeister');
       if (!p.alive) badges.push('tot');
-      return '<div class="player' + (p.alive ? '' : ' dead') + '"><span><span class="player-name">' + (index + 1) + '. ' + esc(p.name) +
+      return '<div class="player' + (p.alive ? '' : ' dead') + '"><span class="life" role="img" aria-label="' + (p.alive ? 'lebt' : 'tot') + '">' + (p.alive ? '❤️' : '💀') + '</span><span><span class="player-name">' + (index + 1) + '. ' + esc(p.name) +
         '</span>' + (badges.length ? '<span class="sub">' + esc(badges.join(' · ')) + '</span>' : '') + '</span></div>';
     }).join('');
     return header(phaseEyebrow(), 'Diskussion') +
+      hero('☀️', 'Tag') +
       '<div class="stack">' + mayorHtml() +
       '<p class="lead">Redet offen. Das Duell geht vor der Abstimmung, einmal pro Russe. Die Abstimmung ist geheim.</p>' +
       '<div class="stack">' + list + '</div>' +
@@ -285,6 +327,7 @@
   function renderAnnounce() {
     var box = state.announce || { title: 'Weiter', lines: [], button: 'Weiter' };
     return header(phaseEyebrow(), box.title) +
+      hero('📢', 'Ansage') +
       '<div class="stack">' + mayorHtml() +
       '<div class="card stack">' + box.lines.map(function (line) { return '<p>' + esc(line) + '</p>'; }).join('') + '</div>' +
       '<button type="button" class="btn" data-act="ack">' + esc(box.button || 'Weiter') + '</button></div>';
@@ -319,6 +362,7 @@
         '<span class="meta">' + (finished ? 'schon dran' : 'tippen, wenn du dran bist') + '</span></span></button>';
     }).join('');
     return header(phaseEyebrow(), 'Wer ist wach?') +
+      hero('🌙', 'Nacht') +
       '<div class="stack">' + errorHtml() +
       '<p class="lead">Jede lebende Person tippt den eigenen Namen. Die Reihenfolge ist egal. Wer fertig ist, wird grau und kann diese Nacht nicht noch einmal.</p>' +
       '<div class="stack">' + names + '</div>' + abortLink() + '</div>';
@@ -328,6 +372,7 @@
     var person = player(state.activeId);
     var name = person ? person.name : '';
     return header(phaseEyebrow(), name) +
+      hero('🌙', 'Nacht') +
       '<section class="stage"><p class="lead">Nur ' + esc(name) + ' schaut jetzt hin.</p>' +
       '<button type="button" class="btn" data-act="go">Go</button>' +
       '<button type="button" class="btn secondary" data-act="back">Zurück zur Liste</button></section>';
@@ -335,14 +380,14 @@
 
   function promptHtml(person, prompt) {
     if (prompt.kind === 'sleep') {
-      return '<section class="stage"><p class="lead">Du schläfst. Für dich gibt es nichts zu tun.</p>' +
-        '<button type="button" class="btn" data-act="ack">Ich will gar nichts machen</button></section>';
+      return hero('😴', 'Schlafen') + '<section class="stage"><p class="lead">Du schläfst. Für dich gibt es nichts zu tun.</p>' +
+        '<button type="button" class="btn" data-act="ack">🚫 Ich will gar nichts machen</button></section>';
     }
     if (prompt.kind === 'notice') {
       var text = person.role === 'dorfbewohner'
         ? 'Jemand hat deine Rolle gestohlen. Du bist jetzt Dorfbewohner.'
         : 'Jemand hat deine Rolle gestohlen. In dieser Nacht gilt deine bisherige Rolle noch. Ab der nächsten Nacht bist du Dorfbewohner.';
-      return '<div class="banner love">' + esc(text) + '</div><button type="button" class="btn" data-act="ack">Weiter</button>';
+      return hero('🦝', 'Diebstahl') + '<div class="banner love">' + esc(text) + '</div><button type="button" class="btn" data-act="ack">Weiter</button>';
     }
     if (prompt.kind === 'love') {
       var partners = W.loverComponent(state, person.id).filter(function (id) {
@@ -353,15 +398,15 @@
         var other = player(id);
         return '<p><strong>' + esc(other.name) + '</strong> ist ' + esc(W.roleName(other.role)) + '.</p>';
       }).join('');
-      return '<div class="banner love">Du bist verliebt. Stirbt eine Person aus dieser Gruppe, sterben alle verbundenen Personen mit.</div>' +
+      return hero('💞', 'Liebe') + '<div class="banner love">Du bist verliebt. Stirbt eine Person aus dieser Gruppe, sterben alle verbundenen Personen mit.</div>' +
         '<div class="card stack">' + lines + '</div><button type="button" class="btn" data-act="ack">Verdecken</button>';
     }
     if (prompt.kind === 'info') {
-      return '<div class="card"><p class="lead">' + esc(prompt.text) + '</p></div><button type="button" class="btn" data-act="ack">Weiter</button>';
+      return hero('📢', 'Hinweis') + '<div class="card"><p class="lead">' + esc(prompt.text) + '</p></div><button type="button" class="btn" data-act="ack">Weiter</button>';
     }
     if (prompt.kind === 'seer-result') {
       var seen = player(prompt.seenId);
-      return '<section class="stage card"><p class="eyebrow">Seherin</p><p class="big-role">' + esc(seen ? seen.name : '') + '</p>' +
+      return hero('👁️', 'Seherin') + '<section class="stage card"><p class="eyebrow">Seherin</p><p class="big-role">' + roleIcon(prompt.role) + ' ' + esc(seen ? seen.name : '') + '</p>' +
         '<p class="lead">ist ' + esc(W.roleName(prompt.role)) + '.</p>' +
         '<button type="button" class="btn" data-act="ack">Verdecken</button></section>';
     }
@@ -393,7 +438,7 @@
       W.wolfBoard(state, person.id).map(function (wolf) {
         return '<p><strong>' + esc(wolf.name) + '</strong> · ' + esc(wolf.choice) + '</p>';
       }).join('') + '</div>' : '';
-    var skipLabel = 'Ich will gar nichts machen';
+    var skipLabel = '🚫 Ich will gar nichts machen';
     if (prompt.kind === 'heal') skipLabel = (state.heals || []).length ? 'Keine weiteren Heiltränke' : 'Keinen Heiltrank';
     if (prompt.kind === 'poison') skipLabel = 'Kein Gift';
     var canSkip = !prompt.forced && (prompt.kind === 'steal' || prompt.kind === 'copy' || prompt.kind === 'heal' ||
@@ -421,7 +466,20 @@
         : 'Nächtlicher Schuss: wähle ein Haus. Alle darin sterben.',
       schaufel: 'Wen holst du am Morgen zurück? Die Person behält Rolle und verbrauchte Kräfte und ist nicht mehr verliebt.'
     };
-    return '<p class="lead">' + esc(text[prompt.kind] || 'Wähle.') + '</p>';
+    var marks = {
+      vote: hero('🗳️', 'Abstimmung'),
+      wolf: hero('🩸', 'Wolfsangriff'),
+      nutte: hero('💋', 'Nutte'),
+      steal: hero('🦝', 'Diebstahl'),
+      seer: hero('👁️', 'Seherin'),
+      amor: hero('💘', 'Amor'),
+      copy: hero('🎭', 'Nachahmen'),
+      heal: '<p class="hero">' + flask('heal') + '</p>',
+      poison: '<p class="hero">' + flask('poison') + '</p>',
+      kill: hero('🩸', 'Angriff'),
+      schaufel: hero('⛏️', 'Schaufel')
+    };
+    return (marks[prompt.kind] || '') + '<p class="lead">' + esc(text[prompt.kind] || 'Wähle.') + '</p>';
   }
 
   function renderHunter() {
@@ -434,7 +492,7 @@
     var when = state.resolution === 'morning'
       ? 'Du bist in der Nacht gestorben. Der Schuss gilt am Morgen und trifft eine Person, kein Haus.'
       : 'Du stirbst und schießt noch auf eine Person.';
-    return header('Jäger', hunter.name) + '<div class="stack">' + errorHtml() +
+    return header('Jäger', hunter.name) + hero('🏹', 'Jäger') + '<div class="stack">' + errorHtml() +
       '<p class="lead">' + esc(when) + '</p><div class="stack">' + list + '</div>' +
       '<button type="button" class="btn bad" data-act="confirm">Schießen</button></div>';
   }
@@ -445,14 +503,14 @@
       var people = W.living(state).map(function (p) {
         return choiceButton(p.id, p.name, '', 'person');
       }).join('');
-      return header('Duell', 'Wer bist du?') + '<div class="stack">' + errorHtml() +
+      return header('Duell', 'Wer bist du?') + hero('🎲', 'Duell') + '<div class="stack">' + errorHtml() +
         '<p class="lead">Tippe deinen Namen.</p>' +
         '<div class="stack">' + people + '</div>' +
         '<button type="button" class="btn" data-act="confirm">Das bin ich</button>' +
         '<button type="button" class="btn secondary" data-act="cancel">Zurück</button></div>';
     }
     if (duel.stage === 'noop') {
-      return header('Duell', 'Nichts passiert') +
+      return header('Duell', 'Nichts passiert') + hero('🚫', 'Nichts') +
         '<section class="stage"><p class="lead">Nichts passiert.</p><button type="button" class="btn" data-act="ack">Zurück</button></section>';
     }
     if (duel.stage === 'pick') {
@@ -460,7 +518,7 @@
       var foes = W.living(state).filter(function (p) { return p.id !== duel.russeId; }).map(function (p) {
         return choiceButton(p.id, p.name, '', 'person');
       }).join('');
-      return header('Duell', russe ? russe.name : 'Russe') + '<div class="stack">' + errorHtml() +
+      return header('Duell', russe ? russe.name : 'Russe') + hero('🎲', 'Duell') + '<div class="stack">' + errorHtml() +
         '<div class="banner love">' + esc(russe ? russe.name : '') + ' ist der Russe.</div>' +
         '<p class="lead">Fordere 1 bis 5 Personen heraus. Du schießt zuerst, dann in der gewählten Reihenfolge, immer im Kreis. Eine Kugel, sechs Kammern, keine neue Drehung.</p>' +
         '<div class="stack">' + foes + '</div>' +
@@ -474,11 +532,11 @@
       return handoff(name, (player(duel.russeId).name) + ' fordert ' + challenged + '. Zug ' + (duel.pull + 1) + ' von 6.');
     }
     if (duel.stage === 'pull-ready') {
-      return header('Duell', name) + '<section class="stage"><p class="eyebrow">Zug ' + (duel.pull + 1) + ' von 6</p>' +
+      return header('Duell', name) + hero('🎲', 'Duell') + '<section class="stage"><p class="eyebrow">Zug ' + (duel.pull + 1) + ' von 6</p>' +
         '<p class="lead">Eine Kugel liegt in einer der sechs Kammern. Tippe für den Abzug.</p>' +
         '<button type="button" class="btn bad" data-act="ack">Abzug ziehen</button></section>';
     }
-    return header('Duell', name) + '<section class="stage"><p class="big-role">' + (duel.hit ? 'Knall.' : 'Klick.') + '</p>' +
+    return header('Duell', name) + hero(duel.hit ? '💥' : '🎲', duel.hit ? 'Treffer' : 'Leer') + '<section class="stage"><p class="big-role">' + (duel.hit ? 'Knall.' : 'Klick.') + '</p>' +
       '<p class="lead">' + (duel.hit ? 'Die Kugel trifft.' : 'Die Kammer ist leer.') + '</p>' +
       '<button type="button" class="btn" data-act="ack">Weiter</button></section>';
   }
@@ -500,10 +558,11 @@
       if (p.id === state.mayorId) meta.push('Bürgermeister');
       if (love.length) meta.push('verliebt in ' + love.join(', '));
       else if (old.length) meta.push('Liebesband gelöst, war mit ' + old.join(', '));
-      return '<div class="rank"><span>' + esc(p.name) + '<span class="sub">' + esc(meta.join(' · ')) + '</span></span><strong>' +
-        esc(W.roleName(p.role)) + '</strong></div>';
+      return '<div class="rank"><span class="life" role="img" aria-label="' + (p.alive ? 'lebt' : 'tot') + '">' + (p.alive ? '❤️' : '💀') + '</span><span>' + esc(p.name) + '<span class="sub">' + esc(meta.join(' · ')) + '</span></span><strong>' +
+        roleIcon(p.role) + ' ' + esc(W.roleName(p.role)) + '</strong></div>';
     }).join('');
     return header('Ende', 'Werwolf', true) +
+      hero('🏆', 'Sieg') +
       '<div class="stack"><div class="banner win">' + esc(W.WIN_TEXT[state.winner] || 'Spiel zu Ende') + '</div>' +
       (state.winReason ? '<p class="lead">' + esc(state.winReason) + '</p>' : '') +
       '<div class="card">' + rows + '</div>' +

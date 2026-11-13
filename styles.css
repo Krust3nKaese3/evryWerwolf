@@ -75,7 +75,11 @@ textarea { min-height: 120px; resize: vertical; }
 .choice.dead, .player.dead { opacity: 0.45; }
 .choice .who, .player-name { font-size: 18px; font-weight: 800; }
 .choice .meta, .sub { display: block; color: #d9d0c0; font-size: 14px; font-weight: 600; margin-top: 2px; }
-.mark { width: 28px; height: 28px; flex: 0 0 28px; display: inline-flex; color: #e6b15a; }
+.mark { width: 32px; height: 32px; flex: 0 0 32px; display: inline-flex; align-items: center; justify-content: center; color: #e6b15a; font-size: 26px; line-height: 1; }
+.hero { font-size: 76px; line-height: 1; text-align: center; margin: 4px 0 8px; }
+.hero .flask { width: 84px; height: 104px; }
+.flask { width: 1.15em; height: 1.4em; vertical-align: -0.25em; display: inline-block; }
+.life { font-size: 22px; margin-right: 6px; }
 .mark svg, .icon-btn svg, .bug-launcher svg { width: 22px; height: 22px; display: block; }
 .icon-btn {
   width: 48px;
