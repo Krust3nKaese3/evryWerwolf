@@ -944,6 +944,7 @@
       if (!p || p.alive) return;
       p.alive = true;
       p.loverIds = [];
+      p.hunterShot = false;
       state.revived.push({ id: p.id, name: p.name });
       note(state, 'Wiederbelebt ' + p.name);
     });
