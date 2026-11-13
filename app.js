@@ -293,8 +293,17 @@
   function renderTurn() {
     if (state.screen === 'night' && state.step === 'list') return renderNightList();
     if (state.screen === 'night' && state.step === 'ready') return renderNightReady();
-    var person = state.screen === 'night' ? player(state.activeId) : player(state.order[state.cursor]);
-    if (!person) return header('Werwolf', 'Weiter');
+    var person = state.screen === 'night' ? player(state.activeId) : player((state.order || [])[state.cursor]);
+    if (!person) {
+      if (state.screen === 'night') {
+        if (!Array.isArray(state.nightDone)) state.nightDone = [];
+        state.step = 'list';
+        state.activeId = null;
+        return renderNightList();
+      }
+      return header('Werwolf', 'Weiter') +
+        '<div class="stack"><button type="button" class="btn secondary" data-act="abort-ask">Spiel abbrechen</button></div>';
+    }
     if (state.step !== 'show') return handoff(person.name);
     var prompt = W.view(state).prompt;
     if (!prompt) return handoff(person.name);
@@ -617,6 +626,7 @@
       if (!state.log) state.log = [];
       if (!state.selection) state.selection = [];
       if (!state.bonds) state.bonds = [];
+      W.adoptSaved(state);
     } else if (savedLobby && savedLobby.players) {
       state = W.newLobby();
       state.players = savedLobby.players;

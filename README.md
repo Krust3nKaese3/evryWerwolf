@@ -167,7 +167,7 @@ Start ist nur erlaubt, wenn mindestens ein Werwolf da ist, mindestens eine Perso
 
 ## Speicher und Fehlerbericht
 
-Namen liegen unter `werwolf.lobby.v1`, sobald jemand einen Namen hinzufügt, ändert sich die Liste also sofort. Das laufende Spiel liegt unter `werwolf.game.v1`. Home und „Spiel abbrechen“ löschen nur das Spiel, nicht die Namen.
+Namen liegen unter `werwolf.lobby.v1`, sobald jemand einen Namen hinzufügt, ändert sich die Liste also sofort. Das laufende Spiel liegt unter `werwolf.game.v1`. Home und „Spiel abbrechen“ löschen nur das Spiel, nicht die Namen. Ein Nachtstand aus der Rohfassung, der noch in der ersten Runde hängt, wird auf den offenen Zug gesetzt. Ein Stand aus der zweiten Runde geht zurück in die Lobby, die Namen bleiben.
 
 Das Käfer-Symbol sitzt auf jedem Screen, ohne selbst eine Rolle zu verraten. Es öffnet einen Bericht mit Beschreibungsfeld. **Kopieren** legt einen Markdown-Block in die Zwischenablage: Beschreibung, Version, Zeitpunkt, Konfiguration, den kompletten Spielstand und das Aktionsprotokoll (Bildwechsel, Tipps, Nachtaktionen, Auflösung, Fehler mit Stack). Zurück schließt den Bericht und lässt das Spiel, wie es war. Der Text enthält Geheimnisse.
 
