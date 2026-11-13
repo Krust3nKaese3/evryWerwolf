@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#12160f">
+  <title>Werwolf</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <button type="button" id="bug-btn" class="bug-launcher" aria-label="Fehler melden">
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M8 10h8v6a4 4 0 0 1-8 0v-6zM12 10V6M9 6h6M4 13H2M22 13h-2M7 9 5 7M17 9l2-2M7 17l-2 2M17 17l2 2"/>
+    </svg>
+  </button>
+  <div id="bug-panel" hidden>
+    <div class="bug-card">
+      <h2>Fehler melden</h2>
+      <p class="hint">Der Bericht enthält geheime Rollen, Stimmen und den Nachtverlauf. Gib ihn nur Leuten, die das Spiel kennen dürfen.</p>
+      <label for="bug-text">Was ist schiefgelaufen?</label>
+      <textarea id="bug-text" rows="5" placeholder="Zum Beispiel: Die Hexe hat geheilt, trotzdem ist das Haus gestorben."></textarea>
+      <button type="button" id="bug-copy" class="btn">Kopieren</button>
+      <p id="bug-status" class="hint" role="status"></p>
+      <button type="button" id="bug-close" class="btn secondary">Zurück</button>
+    </div>
+  </div>
+  <div id="app">Laden …</div>
+  <script src="game.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
