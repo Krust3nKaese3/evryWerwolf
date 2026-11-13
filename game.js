@@ -77,7 +77,7 @@
     return counts;
   }
 
-  function validateSetup(counts, playerCount, nachUses, healPotions) {
+  function validateSetup(counts, playerCount, nachUses, healPotions, pool) {
     if (!counts) return 'Keine Rollen.';
     var sum = 0;
     for (var i = 0; i < ROLE_ORDER.length; i++) {
@@ -85,15 +85,52 @@
       if (!isInt(c) || c < 0) return 'Ungültige Rollenanzahl.';
       sum += c;
     }
+    if (!isInt(nachUses) || nachUses < 1 || nachUses > 5) return 'Nachahmungen: 1 bis 5 Einsätze.';
+    if (healPotions == null) healPotions = 2;
+    if (!isInt(healPotions) || healPotions < 1 || healPotions > 8) return 'Heiltränke: 1 bis 8.';
+    if (pool) return validatePool(counts, playerCount, sum);
     if (sum !== playerCount) return 'Die Rollen müssen genau der Spielerzahl entsprechen.';
     if ((counts.werwolf || 0) < 1) return 'Mindestens ein Werwolf.';
     var village = playerCount - (counts.werwolf || 0) - (counts.politiker || 0);
     if (village < 1) return 'Es braucht mindestens eine Person auf der Dorfseite.';
     if ((counts.werwolf || 0) >= village) return 'Zu viele Werwölfe: sie hätten sofort gewonnen.';
-    if (!isInt(nachUses) || nachUses < 1 || nachUses > 5) return 'Nachahmungen: 1 bis 5 Einsätze.';
-    if (healPotions == null) healPotions = 2;
-    if (!isInt(healPotions) || healPotions < 1 || healPotions > 8) return 'Heiltränke: 1 bis 8.';
     return '';
+  }
+
+  function validatePool(counts, playerCount, sum) {
+    var wolfMin = counts.wolfMin;
+    var wolfMax = counts.wolfMax;
+    if (!isInt(wolfMin) || wolfMin < 1) return 'Mindestens ein Werwolf.';
+    if (!isInt(wolfMax) || wolfMax < wolfMin) return 'Werwolf-Maximum muss mindestens das Minimum sein.';
+    if (wolfMin >= playerCount) return 'Das Wolfsminimum muss kleiner sein als die Spielerzahl.';
+    var nonWolf = sum - (counts.werwolf || 0);
+    var poolSize = wolfMax + nonWolf;
+    if (poolSize < playerCount) return 'Der Rollenpool muss mindestens die Spielerzahl fassen.';
+    var seatsAfterMax = playerCount - wolfMax;
+    if (seatsAfterMax < 0) seatsAfterMax = 0;
+    if (nonWolf < seatsAfterMax) return 'Zu wenige Rollen außer Werwolf für die übrigen Plätze.';
+    if (!poolPlayable(counts, wolfMin, wolfMax, playerCount, nonWolf)) {
+      return 'Zu viele Werwölfe: sie hätten sofort gewonnen.';
+    }
+    return '';
+  }
+
+  function poolPlayable(counts, wolfMin, wolfMax, playerCount) {
+    var villageCards = 0;
+    ROLE_ORDER.forEach(function (role) {
+      if (role === 'werwolf' || role === 'politiker') return;
+      villageCards += counts[role] || 0;
+    });
+    var politiker = counts.politiker || 0;
+    var maxW = wolfMax < playerCount ? wolfMax : playerCount - 1;
+    for (var w = wolfMin; w <= maxW; w++) {
+      var needVillage = w + 1;
+      if (needVillage > villageCards) continue;
+      if (w + needVillage > playerCount) continue;
+      var rest = playerCount - w - needVillage;
+      if (rest <= politiker + (villageCards - needVillage)) return true;
+    }
+    return false;
   }
 
   function isInt(n) { return typeof n === 'number' && n === Math.floor(n); }
@@ -207,6 +244,9 @@
     state.counts = defaultCounts(state.players.length);
     state.nachUses = 1;
     state.healPotions = 2;
+    state.rolePool = true;
+    state.wolfMin = state.counts.werwolf || 1;
+    state.wolfMax = state.counts.werwolf || 1;
     state.error = '';
     setScreen(state, 'setup');
     note(state, 'Rollenwahl');
@@ -217,18 +257,31 @@
     var rng = opts.rng || Math.random;
     var nachUses = opts.nachUses || 1;
     var healPotions = opts.healPotions == null ? 2 : opts.healPotions;
-    var err = validateSetup(counts, names.length, nachUses, healPotions);
+    var rolePool = !!opts.rolePool;
+    var wolfMin = opts.wolfMin == null ? (counts.werwolf || 1) : opts.wolfMin;
+    var wolfMax = opts.wolfMax == null ? wolfMin : opts.wolfMax;
+    var check = counts;
+    if (rolePool) {
+      check = {};
+      ROLE_ORDER.forEach(function (role) { check[role] = counts[role] || 0; });
+      check.wolfMin = wolfMin;
+      check.wolfMax = wolfMax;
+    }
+    var err = validateSetup(check, names.length, nachUses, healPotions, rolePool);
     if (err) throw new Error(err);
-    var bag = [];
-    ROLE_ORDER.forEach(function (role) {
-      for (var i = 0; i < (counts[role] || 0); i++) bag.push(role);
-    });
+    var bag = rolePool ? dealFromPool(counts, wolfMin, wolfMax, names.length, rng) : exactBag(counts);
     shuffle(bag, rng);
     var players = names.map(function (name, i) {
       return makePlayer(i + 1, name, bag[i], nachUses, healPotions);
     });
     var state = freshPlaying(players, counts, nachUses, healPotions, opts.log || []);
     state._rng = rng;
+    state.rolePool = rolePool;
+    state.wolfMin = wolfMin;
+    state.wolfMax = wolfMax;
+    state.config.rolePool = rolePool;
+    state.config.wolfMin = wolfMin;
+    state.config.wolfMax = wolfMax;
     note(state, 'Rollen verteilt');
     return state;
   }
@@ -283,6 +336,55 @@
     };
   }
 
+  function exactBag(counts) {
+    var bag = [];
+    ROLE_ORDER.forEach(function (role) {
+      for (var i = 0; i < (counts[role] || 0); i++) bag.push(role);
+    });
+    return bag;
+  }
+
+  function dealFromPool(counts, wolfMin, wolfMax, playerCount, rng) {
+    var rest = [];
+    ROLE_ORDER.forEach(function (role) {
+      if (role === 'werwolf') return;
+      for (var i = 0; i < (counts[role] || 0); i++) rest.push(role);
+    });
+    for (var extra = 0; extra < wolfMax - wolfMin; extra++) rest.push('werwolf');
+    var bag = null;
+    for (var attempt = 0; attempt < 40; attempt++) {
+      shuffle(rest, rng);
+      var candidate = [];
+      for (var w = 0; w < wolfMin; w++) candidate.push('werwolf');
+      for (var n = 0; n < playerCount - wolfMin; n++) candidate.push(rest[n]);
+      if (bagOk(candidate)) {
+        bag = candidate;
+        break;
+      }
+    }
+    if (!bag) throw new Error('Zu viele Werwölfe: sie hätten sofort gewonnen.');
+    return bag;
+  }
+
+  function bagOk(bag) {
+    var wolves = 0;
+    var politiker = 0;
+    for (var i = 0; i < bag.length; i++) {
+      if (bag[i] === 'werwolf') wolves += 1;
+      else if (bag[i] === 'politiker') politiker += 1;
+    }
+    var village = bag.length - wolves - politiker;
+    return wolves >= 1 && village >= 1 && wolves < village;
+  }
+
+  function everyoneRevealed(state) {
+    if (!state.revealed || !state.players.length) return false;
+    for (var i = 0; i < state.players.length; i++) {
+      if (!state.revealed[state.players[i].id]) return false;
+    }
+    return true;
+  }
+
   function dealInto(state) {
     var names = state.players.map(function (p) { return p.name; });
     var rng = state._rng || Math.random;
@@ -292,6 +394,9 @@
       rng: rng,
       nachUses: state.nachUses,
       healPotions: state.healPotions == null ? 2 : state.healPotions,
+      rolePool: !!state.rolePool,
+      wolfMin: state.wolfMin,
+      wolfMax: state.wolfMax,
       log: state.log
     });
     } catch (error) {
@@ -611,9 +716,9 @@
   }
 
   function currentId(state) {
-    if (state.screen === 'hunter') return state.hunterId;
-    if (state.screen === 'night' || state.screen === 'reveal') return state.activeId;
-    return state.order[state.cursor];
+    if (state.screen === 'hunter') return state.activeId || state.hunterId;
+    if (state.screen === 'night' || state.screen === 'reveal' || state.screen === 'vote') return state.activeId;
+    return state.order && state.order[state.cursor];
   }
 
   function abilityOf(role) {
@@ -706,6 +811,23 @@
     resolveNight(state);
   }
 
+  function finishVoteActor(state) {
+    var id = state.activeId;
+    if (!state.voteDone) state.voteDone = [];
+    if (id != null && state.voteDone.indexOf(id) < 0) state.voteDone.push(id);
+    state.activeId = null;
+    state.prompts = [];
+    state.promptIndex = 0;
+    state.selection = [];
+    state.error = '';
+    var pending = livingIds(state).filter(function (pid) { return state.voteDone.indexOf(pid) < 0; });
+    if (!pending.length) {
+      finishVote(state);
+      return;
+    }
+    state.step = 'list';
+  }
+
   function finishNightActor(state) {
     var id = state.activeId;
     if (id != null && state.nightDone.indexOf(id) < 0) state.nightDone.push(id);
@@ -732,6 +854,7 @@
       events.push({ houseId: Number(id), cause: 'gift', kind: 'other' });
     });
     state.hunters = [];
+    state.hunterCast = [];
     state.obit = [];
     events.forEach(function (ev) {
       if (healed[Number(ev.houseId)]) {
@@ -753,8 +876,14 @@
     }
     while (state.hunters.length && !living(state).length) state.hunters.shift();
     if (state.hunters.length) {
-      state.hunterId = state.hunters[0];
-      state.step = 'handoff';
+      if (!state.hunterCast) state.hunterCast = [];
+      state.hunters.forEach(function (id) {
+        if (state.hunterCast.indexOf(id) < 0) state.hunterCast.push(id);
+      });
+      state.step = 'list';
+      state.activeId = null;
+      state.hunterId = null;
+      state.selection = [];
       setScreen(state, 'hunter');
       return;
     }
@@ -845,6 +974,7 @@
     state.pendingCondemn = null;
     state.obit = [];
     state.hunters = [];
+    state.hunterCast = [];
     if (!id) {
       beginNight(state);
       return;
@@ -922,6 +1052,7 @@
     state.error = '';
     if (state.promptIndex >= state.prompts.length) {
       if (state.screen === 'night') finishNightActor(state);
+      else if (state.screen === 'vote') finishVoteActor(state);
       else nextPlayer(state);
     }
   }
@@ -1230,15 +1361,45 @@
       state.healPotions = Number(action.value);
       return;
     }
+    if (action.type === 'set-wolf-min') {
+      state.wolfMin = Number(action.value);
+      state.error = '';
+      return;
+    }
+    if (action.type === 'set-wolf-max') {
+      state.wolfMax = Number(action.value);
+      state.error = '';
+      return;
+    }
+    if (action.type === 'toggle-pool') {
+      state.rolePool = !state.rolePool;
+      if (state.rolePool) {
+        if (!isInt(state.wolfMin)) state.wolfMin = state.counts.werwolf || 1;
+        if (!isInt(state.wolfMax)) state.wolfMax = state.wolfMin;
+      } else if (isInt(state.wolfMin)) {
+        state.counts.werwolf = state.wolfMin;
+      }
+      state.error = '';
+      return;
+    }
     if (action.type === 'suggest') {
       state.counts = defaultCounts(state.players.length);
+      state.wolfMin = state.counts.werwolf || 1;
+      state.wolfMax = state.wolfMin;
       state.nachUses = 1;
       state.healPotions = 2;
       state.error = '';
       return;
     }
     if (action.type === 'deal') {
-      var problem = validateSetup(state.counts, state.players.length, state.nachUses, state.healPotions);
+      var setupCounts = state.counts;
+      if (state.rolePool) {
+        setupCounts = {};
+        ROLE_ORDER.forEach(function (role) { setupCounts[role] = state.counts[role] || 0; });
+        setupCounts.wolfMin = state.wolfMin;
+        setupCounts.wolfMax = state.wolfMax;
+      }
+      var problem = validateSetup(setupCounts, state.players.length, state.nachUses, state.healPotions, !!state.rolePool);
       state.error = problem;
       if (problem) return;
       dealInto(state);
@@ -1295,6 +1456,10 @@
       return;
     }
     if (action.type === 'start-game') {
+      if (!everyoneRevealed(state)) {
+        state.error = 'Jede Person muss ihre Rolle mindestens einmal ansehen.';
+        return;
+      }
       note(state, 'Spiel startet, Nacht 1, Bürgermeister ' + playerById(state, state.mayorId).name);
       beginNight(state);
     }
@@ -1305,8 +1470,14 @@
       state.order = livingIds(state);
       state.cursor = 0;
       state.votes = {};
+      state.voteDone = [];
+      state.activeId = null;
+      state.prompts = [];
+      state.promptIndex = 0;
+      state.selection = [];
       state.resolution = null;
-      goHandoff(state);
+      state.step = 'list';
+      state.error = '';
       setScreen(state, 'vote');
       note(state, 'Abstimmung');
       return;
@@ -1346,7 +1517,22 @@
       note(state, 'Nachtwahl ' + picked.name);
       return;
     }
-    if (state.screen === 'night' && state.step === 'ready') {
+    if (state.screen === 'vote' && state.step === 'list') {
+      if (action.type !== 'vote-pick') return;
+      var voter = playerById(state, action.id);
+      if (!voter || !voter.alive) return;
+      if (!state.voteDone) state.voteDone = [];
+      if (state.voteDone.indexOf(voter.id) >= 0) {
+        state.error = 'Diese Person hat schon abgestimmt.';
+        return;
+      }
+      state.activeId = voter.id;
+      state.step = 'ready';
+      state.error = '';
+      note(state, 'Abstimmungswahl ' + voter.name);
+      return;
+    }
+    if ((state.screen === 'night' || state.screen === 'vote') && state.step === 'ready') {
       if (action.type === 'back') {
         state.activeId = null;
         state.step = 'list';
@@ -1368,12 +1554,32 @@
   }
 
   function hunterSend(state, action) {
-    var hunter = playerById(state, state.hunterId);
-    if (state.step === 'handoff') {
-      if (action.type !== 'ack') return;
+    if (state.step === 'handoff') state.step = 'list';
+    if (state.step === 'list') {
+      if (action.type !== 'hunter-pick') return;
+      var pickedHunter = playerById(state, action.id);
+      if (!pickedHunter || state.hunters.indexOf(pickedHunter.id) < 0) {
+        state.error = 'Diese Person schießt nicht mehr.';
+        return;
+      }
+      state.activeId = pickedHunter.id;
+      state.hunterId = pickedHunter.id;
+      state.step = 'ready';
+      state.selection = [];
+      state.error = '';
+      return;
+    }
+    if (state.step === 'ready') {
+      if (action.type === 'back') {
+        state.step = 'list';
+        state.activeId = null;
+        state.error = '';
+        return;
+      }
+      if (action.type !== 'go' && action.type !== 'ack') return;
       state.step = 'show';
       state.selection = [];
-      note(state, 'Jäger schießt ' + (hunter ? hunter.name : ''));
+      note(state, 'Jäger schießt ' + (playerById(state, state.hunterId) || {}).name);
       return;
     }
     if (action.type === 'select') {
@@ -1385,7 +1591,8 @@
     var others = living(state);
     if (!others.length) {
       state.hunters.shift();
-      state.step = 'handoff';
+      state.step = 'list';
+      state.activeId = null;
       continueResolution(state);
       return;
     }
@@ -1394,7 +1601,9 @@
       return;
     }
     note(state, 'Schuss auf ' + playerById(state, target).name);
-    state.hunters.shift();
+    var shotAt = state.hunters.indexOf(state.hunterId);
+    if (shotAt >= 0) state.hunters.splice(shotAt, 1);
+    else state.hunters.shift();
     applyDeath(state, target, 'jaeger');
     if (state.winner === 'politiker') {
       setScreen(state, 'end');
@@ -1469,7 +1678,7 @@
       duel.order = [duel.russeId].concat(ids);
       duel.bulletAt = Math.floor(rngOf(state)() * 6);
       duel.pull = 0;
-      duel.stage = 'pull-handoff';
+      duel.stage = 'pull-ready';
       state.error = '';
       note(state, 'Duell Start Kugel ' + duel.bulletAt);
       return;
@@ -1492,6 +1701,7 @@
         var shooter = duel.order[duel.pull % duel.order.length];
         state.obit = [];
         state.hunters = [];
+        state.hunterCast = [];
         applyDeath(state, shooter, 'duell');
         state.resolution = 'duel';
         if (state.winner === 'politiker') {
@@ -1508,7 +1718,7 @@
         finishDuelAftermath(state);
         return;
       }
-      duel.stage = 'pull-handoff';
+      duel.stage = 'pull-ready';
     }
   }
 
@@ -1645,6 +1855,7 @@
     living: living,
     deadPlayers: deadPlayers,
     beginNight: beginNight,
+    everyoneRevealed: everyoneRevealed,
     adoptSaved: adoptSaved,
     loveSignature: loveSignature,
     ownerHome: ownerHome
