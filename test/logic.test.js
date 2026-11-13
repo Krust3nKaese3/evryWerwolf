@@ -71,6 +71,12 @@ function toDiscuss(state) {
       const host = W.living(s).filter(function (p) { return p.id !== view.playerId; })[0];
       return { type: 'confirm', id: host.id };
     }
+    if (view.prompt && view.prompt.kind === 'amor') {
+      const me = view.playerId;
+      const shovel = W.living(s).filter(function (p) { return p.role === 'schaufel' && p.id !== me; })[0];
+      const other = shovel || W.living(s).filter(function (p) { return p.id !== me; })[0];
+      return { type: 'confirm', ids: [me, other.id] };
+    }
     return null;
   });
   if (state.screen === 'announce') W.send(state, { type: 'ack' });
@@ -319,8 +325,10 @@ test('Nachtablauf: Diebstahl, Nutte, Hexe, Jäger, Schaufel, Bürgermeister', fu
   assert.strictEqual(W.playerById(state, 5).role, 'jaeger');
   /* Jäger lebt noch. Kein Schuss. */
   assert.notStrictEqual(state.screen, 'hunter');
-  assert.strictEqual(W.playerById(state, 1).role, 'waschbaer');
-  assert.ok(state.pendingThefts.length === 1);
+  assert.strictEqual(W.playerById(state, 1).role, 'hexe');
+  assert.strictEqual(W.playerById(state, 4).role, 'dorfbewohner');
+  assert.strictEqual(state.pendingThefts.length, 0);
+  assert.strictEqual(state.winner, null);
   W.send(state, { type: 'ack' }); /* Morgen -> Diskussion Tag 1, Amt bleibt */
   assert.strictEqual(state.screen, 'discuss');
   assert.strictEqual(state.day, 1);
@@ -363,6 +371,9 @@ function playNight(state, decide) {
       if (choice) W.send(state, choice);
       else if (view.prompt && ['sleep', 'love', 'notice', 'info', 'seer-result'].indexOf(view.prompt.kind) >= 0) {
         W.send(state, { type: 'ack' });
+      } else if (view.prompt && view.prompt.kind === 'amor') {
+        const pair = W.living(state);
+        W.send(state, { type: 'confirm', ids: [pair[0].id, pair[1].id] });
       } else W.send(state, { type: 'skip' });
     }
     if (++guard > 300) throw new Error('night loop ' + JSON.stringify(W.view(state)));
@@ -389,7 +400,7 @@ test('Nachahmerin kopiert den Werwolf und tötet ein zweites Haus', function () 
   assert.strictEqual(W.playerById(state, 1).nachLeft, 0);
 });
 
-test('Seherin sieht die Nutte, Amor verbindet sie, Waschbär scheitert an ihrem leeren Haus', function () {
+test('Seherin sieht das Lager der Nutte, Amor verbindet sie, Waschbär stiehlt die Person', function () {
   const counts = {
     werwolf: 1, dorfbewohner: 0, hexe: 0, seherin: 1, amor: 1, jaeger: 0,
     waschbaer: 0, nachahmerin: 0, nutte: 1, russe: 0, politiker: 0, schaufel: 0
@@ -402,21 +413,19 @@ test('Seherin sieht die Nutte, Amor verbindet sie, Waschbär scheitert an ihrem 
     const kind = view.prompt && view.prompt.kind;
     if (kind === 'seer') return { type: 'confirm', id: 4 };
     if (kind === 'seer-result') {
-      seenRole = view.prompt.role;
+      seenRole = view.prompt.label;
       return { type: 'ack' };
     }
     if (kind === 'amor') return { type: 'confirm', ids: [4, 1] };
-    if (kind === 'steal') {
-      if (s.error) return { type: 'skip' };
-      return { type: 'confirm', id: 4 };
-    }
+    if (kind === 'steal') return { type: 'confirm', id: 4 };
     if (kind === 'nutte') return { type: 'confirm', id: 1 };
     if (kind === 'wolf') return { type: 'confirm', id: 1 };
     return null;
   });
-  assert.strictEqual(seenRole, 'nutte');
+  assert.strictEqual(seenRole, 'Team Dorfbewohner');
   assert.ok(W.playerById(state, 4).loverIds.indexOf(1) >= 0);
-  assert.strictEqual(W.playerById(state, 3).stealUsed, false);
+  assert.strictEqual(W.playerById(state, 3).role, 'nutte');
+  assert.strictEqual(W.playerById(state, 4).role, 'dorfbewohner');
   assert.strictEqual(state.pendingThefts.length, 0);
 });
 
