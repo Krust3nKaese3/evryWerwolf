@@ -2,9 +2,12 @@
   var W = window.Werwolf;
   var LOBBY_KEY = 'werwolf.lobby.v1';
   var GAME_KEY = 'werwolf.game.v1';
+  var SCORE_KEY = 'werwolf.scores.v1';
   var STORAGE_TIMEOUT_MS = 4000;
   var app = document.getElementById('app');
   var state = W.newLobby();
+  var scores = {};
+  var confirmReset = false;
   var saveReady = false;
   var booting = true;
 
@@ -87,13 +90,36 @@
     if (!saveReady) return;
     var lobby = lobbySnapshot();
     var game = state.screen === 'lobby' ? null : JSON.parse(JSON.stringify(state));
+    var points = scores;
     saveQueue = saveQueue.then(function () {
-      return writeKey(LOBBY_KEY, lobby).then(function () { return writeKey(GAME_KEY, game); });
+      return writeKey(LOBBY_KEY, lobby).then(function () {
+        return writeKey(GAME_KEY, game);
+      }).then(function () {
+        return writeKey(SCORE_KEY, points);
+      });
     }).then(function () {}, function () {});
   }
 
+  function applyScores() {
+    if (!state || state.screen !== 'end') return;
+    var result = W.awardOnce(scores, state);
+    scores = result.scores;
+  }
+
   function act(action) {
+    if (action.type === 'reset-ask') { confirmReset = true; render(); return; }
+    if (action.type === 'reset-cancel') { confirmReset = false; render(); return; }
+    if (action.type === 'reset-scores') {
+      scores = {};
+      if (state) state.scoredNames = [];
+      confirmReset = false;
+      persist();
+      render();
+      return;
+    }
+    confirmReset = false;
     W.send(state, action);
+    applyScores();
     persist();
     render();
   }
@@ -238,6 +264,7 @@
       names +
       '<button type="button" class="btn" data-act="to-setup"' + (state.players.length < 4 ? ' disabled' : '') + '>Weiter zu den Rollen</button>' +
       '<p class="hint">Mindestens 4 Mitspieler. Aktuell ' + state.players.length + '.</p>' +
+      '<h2>Punkte</h2>' + scoreboardHtml(false) + resetControl() +
       rulesHtml() +
       '</div>';
   }
@@ -630,7 +657,37 @@ if (duel.stage === 'pull-handoff' || duel.stage === 'pull-ready') {
       '<div class="stack"><div class="banner win">' + esc(W.WIN_TEXT[state.winner] || 'Spiel zu Ende') + '</div>' +
       (state.winReason ? '<p class="lead">' + esc(state.winReason) + '</p>' : '') +
       '<div class="card">' + rows + '</div>' +
-      '<p class="hint">Das Home-Symbol oben behält die Namen und öffnet die Lobby.</p></div>';
+      '<h2>Punkte</h2>' + scoreboardHtml(true) + resetControl() +
+      '<p class="hint">Das Home-Symbol oben behält die Namen und öffnet die Lobby. Punkte bleiben gespeichert.</p></div>';
+  }
+
+  function scoreboardHtml(highlight) {
+    var names = {};
+    Object.keys(scores).forEach(function (name) { names[name] = true; });
+    (state.players || []).forEach(function (p) { if (p.name) names[p.name] = true; });
+    var rows = Object.keys(names).map(function (name) {
+      return {
+        name: name,
+        points: scores[name] || 0,
+        plus: !!(highlight && (state.scoredNames || []).indexOf(name) >= 0)
+      };
+    });
+    rows.sort(function (a, b) {
+      if (b.points !== a.points) return b.points - a.points;
+      return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
+    });
+    if (!rows.length) return '<p class="hint">Noch keine Punkte. Wer am Ende lebt und im Siegerteam ist, bekommt einen Punkt.</p>';
+    return '<div class="card">' + rows.map(function (row) {
+      return '<div class="rank' + (row.plus ? ' scored' : '') + '"><span>' + esc(row.name) +
+        (row.plus ? ' <strong class="plus">+1</strong>' : '') + '</span><strong>' + row.points + '</strong></div>';
+    }).join('') + '</div>';
+  }
+
+  function resetControl() {
+    if (!confirmReset) return '<button type="button" class="btn secondary" data-act="reset-ask">Punkte zurücksetzen</button>';
+    return '<div class="banner error">Alle gespeicherten Punkte löschen? Namen in alten Runden bleiben in der Liste, bis du bestätigst.</div>' +
+      '<button type="button" class="btn bad" data-act="reset-scores">Ja, Punkte zurücksetzen</button>' +
+      '<button type="button" class="btn secondary" data-act="reset-cancel">Abbrechen</button>';
   }
 
   function render() {
@@ -753,6 +810,7 @@ if (duel.stage === 'pull-handoff' || duel.stage === 'pull-ready') {
   });
 
   async function boot() {
+    scores = W.grantPoints(await readKey(SCORE_KEY), []);
     var savedGame = await readKey(GAME_KEY);
     var savedLobby = await readKey(LOBBY_KEY);
     if (savedGame && savedGame.screen && savedGame.screen !== 'lobby' && savedGame.players) {
@@ -769,6 +827,8 @@ if (duel.stage === 'pull-handoff' || duel.stage === 'pull-ready') {
     }
     booting = false;
     saveReady = true;
+    applyScores();
+    persist();
     render();
   }
 

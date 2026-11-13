@@ -779,6 +779,59 @@ test('Alter Nachtstand mit cursor wird fortgesetzt und nicht gesperrt', function
   assert.strictEqual(secondRound.players[2].role, undefined);
 });
 
+test('Punkte nur für lebende Sieger, Politiker und überlebende Liebende', function () {
+  const village = {
+    winner: 'dorf',
+    players: [
+      { id: 1, name: 'Anna', role: 'dorfbewohner', alive: true },
+      { id: 2, name: 'Bert', role: 'werwolf', alive: false },
+      { id: 3, name: 'Cleo', role: 'dorfbewohner', alive: false },
+      { id: 4, name: 'Dora', role: 'politiker', alive: true }
+    ]
+  };
+  assert.deepStrictEqual(W.scoreRecipients(village), ['Anna']);
+  const wolves = {
+    winner: 'woelfe',
+    players: [
+      { id: 1, name: 'Anna', role: 'werwolf', alive: true },
+      { id: 2, name: 'Bert', role: 'werwolf', alive: false },
+      { id: 3, name: 'Cleo', role: 'dorfbewohner', alive: false }
+    ]
+  };
+  assert.deepStrictEqual(W.scoreRecipients(wolves), ['Anna']);
+  const pol = {
+    winner: 'politiker',
+    obit: [{ id: 4, name: 'Dora', cause: 'abstimmung' }],
+    players: [
+      { id: 4, name: 'Dora', role: 'politiker', alive: false },
+      { id: 1, name: 'Anna', role: 'dorfbewohner', alive: true }
+    ]
+  };
+  assert.deepStrictEqual(W.scoreRecipients(pol), ['Dora']);
+  const love = {
+    winner: 'liebespaar',
+    players: [
+      { id: 1, name: 'Anna', role: 'dorfbewohner', alive: true, loverIds: [2] },
+      { id: 2, name: 'Bert', role: 'werwolf', alive: true, loverIds: [1] },
+      { id: 3, name: 'Cleo', role: 'dorfbewohner', alive: false, loverIds: [] }
+    ]
+  };
+  assert.deepStrictEqual(W.scoreRecipients(love).sort(), ['Anna', 'Bert']);
+  const kept = W.grantPoints({ Cleo: 2, Egon: 1 }, ['Anna']);
+  assert.deepStrictEqual(kept, { Cleo: 2, Egon: 1, Anna: 1 });
+  const again = W.grantPoints(kept, ['Anna']);
+  assert.strictEqual(again.Anna, 2);
+  assert.strictEqual(again.Egon, 1);
+  const once = W.awardOnce({ Egon: 4 }, village);
+  assert.strictEqual(once.applied, true);
+  assert.strictEqual(once.scores.Anna, 1);
+  assert.strictEqual(once.scores.Egon, 4);
+  assert.strictEqual(village.scoresApplied, true);
+  const twice = W.awardOnce(once.scores, village);
+  assert.strictEqual(twice.applied, false);
+  assert.strictEqual(twice.scores.Anna, 1);
+});
+
 function lcg(seed) {
   let s = seed >>> 0;
   return function () {

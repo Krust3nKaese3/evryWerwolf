@@ -628,6 +628,51 @@
     return null;
   }
 
+  function scoreRecipients(state) {
+    if (!state || !state.winner || state.winner === 'niemand') return [];
+    if (state.winner === 'politiker') {
+      var voted = (state.obit || []).filter(function (row) { return row.cause === 'abstimmung'; });
+      if (voted.length) return voted.map(function (row) { return row.name; });
+      return state.players.filter(function (p) { return p.role === 'politiker' && !p.alive; }).map(function (p) { return p.name; });
+    }
+    if (state.winner === 'liebespaar') {
+      var alive = living(state);
+      if (!alive.length) return [];
+      var comp = loverComponent(state, alive[0].id);
+      return alive.filter(function (p) { return comp.indexOf(p.id) >= 0; }).map(function (p) { return p.name; });
+    }
+    if (state.winner === 'dorf') {
+      return living(state).filter(function (p) { return teamOfRole(p.role) === 'village'; }).map(function (p) { return p.name; });
+    }
+    if (state.winner === 'woelfe') {
+      return living(state).filter(function (p) { return p.role === 'werwolf'; }).map(function (p) { return p.name; });
+    }
+    return [];
+  }
+
+  function grantPoints(scores, names) {
+    var next = {};
+    Object.keys(scores || {}).forEach(function (name) {
+      var n = Number(scores[name]);
+      if (name && isFinite(n) && n > 0) next[name] = Math.floor(n);
+    });
+    (names || []).forEach(function (name) {
+      if (!name) return;
+      next[name] = (next[name] || 0) + 1;
+    });
+    return next;
+  }
+
+  function awardOnce(scores, state) {
+    if (!state || state.scoresApplied) {
+      return { scores: grantPoints(scores, []), names: (state && state.scoredNames) || [], applied: false };
+    }
+    var names = scoreRecipients(state);
+    state.scoresApplied = true;
+    state.scoredNames = names.slice();
+    return { scores: grantPoints(scores, names), names: names, applied: true };
+  }
+
   function resolveWolfHouse(state) {
     var tally = {};
     Object.keys(state.wolfVotes || {}).forEach(function (wolfId) {
@@ -1853,6 +1898,9 @@
     wolfBoard: wolfBoard,
     targetsFor: targetsFor,
     living: living,
+    scoreRecipients: scoreRecipients,
+    grantPoints: grantPoints,
+    awardOnce: awardOnce,
     deadPlayers: deadPlayers,
     beginNight: beginNight,
     everyoneRevealed: everyoneRevealed,

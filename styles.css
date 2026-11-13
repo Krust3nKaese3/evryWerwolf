@@ -73,6 +73,8 @@ textarea { min-height: 120px; resize: vertical; }
 .choice.seen { opacity: 0.55; }
 .choice.done, .choice:disabled { opacity: 0.4; pointer-events: none; }
 .choice.dead, .player.dead { opacity: 0.45; }
+.rank.scored { background: rgba(230, 177, 90, 0.18); }
+.plus { color: #e6b15a; }
 .choice .who, .player-name { font-size: 18px; font-weight: 800; }
 .choice .meta, .sub { display: block; color: #d9d0c0; font-size: 14px; font-weight: 600; margin-top: 2px; }
 .mark { width: 32px; height: 32px; flex: 0 0 32px; display: inline-flex; align-items: center; justify-content: center; color: #e6b15a; font-size: 26px; line-height: 1; }
