@@ -181,6 +181,14 @@ Namen liegen unter `werwolf.lobby.v1`, sobald jemand einen Namen hinzufügt, än
 
 Das Käfer-Symbol sitzt auf jedem Screen, ohne selbst eine Rolle zu verraten. Es öffnet einen Bericht mit Beschreibungsfeld. **Kopieren** legt einen Markdown-Block in die Zwischenablage: Beschreibung, Version, Zeitpunkt, Konfiguration, den kompletten Spielstand und das Aktionsprotokoll (Bildwechsel, Tipps, Nachtaktionen, Auflösung, Fehler mit Stack). Zurück schließt den Bericht und lässt das Spiel, wie es war. Der Text enthält Geheimnisse.
 
+## UX gegenüber der Rohfassung
+
+Die erste spielbare Fassung ist auf Branch `roh` eingefroren (Commit `eefdb97c`, Screenshots unter `roh-screenshots/` auf `roh`). Dieser Branch bleibt unverändert und ist die Vergleichsbasis.
+
+UX-Verbesserungen laufen weiter auf `main`. Später vergleichen wir die Oberfläche mit der Rohfassung, um zu lernen, wie klarere Bedienung von Anfang an aussehen sollte.
+
+Auf diesem Stand von `main` gibt es gegenüber `roh` noch keine neuen Abläufe.
+
 ## Aufbau
 
 ```
