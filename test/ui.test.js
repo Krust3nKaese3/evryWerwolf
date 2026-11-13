@@ -71,6 +71,7 @@ async function main() {
   try {
     await checkLegacy(browser, base);
     await checkFreshWolves(browser, base);
+    await checkScores(browser, base);
   } finally {
     await browser.close();
     await new Promise(function (resolve) { started.server.close(resolve); });
@@ -206,6 +207,48 @@ async function reachWolf(page) {
     throw new Error('unerwarteter Screen\n' + text.slice(0, 300));
   }
   throw new Error('Werwolf nicht erreicht');
+}
+
+async function checkScores(browser, base) {
+  const page = await browser.newPage({ viewport: { width: 412, height: 915 }, locale: 'de-DE' });
+  await page.addInitScript(function () {
+    var ended = {
+      v: 1,
+      screen: 'end',
+      winner: 'dorf',
+      winReason: 'Test',
+      scoresApplied: false,
+      players: [
+        { id: 1, name: 'Anna', role: 'dorfbewohner', alive: true, loverIds: [] },
+        { id: 2, name: 'Bert', role: 'werwolf', alive: false, loverIds: [] }
+      ],
+      log: [],
+      bonds: [],
+      obit: [],
+      mayorId: 1,
+      selection: []
+    };
+    localStorage.setItem('werwolf.game.v1', JSON.stringify(ended));
+    localStorage.setItem('werwolf.scores.v1', JSON.stringify({ Zara: 2 }));
+  });
+  await page.goto(base);
+  await page.getByText('+1').waitFor();
+  const text = await page.locator('#app').innerText();
+  assert.ok(text.indexOf('Zara') >= 0 && text.indexOf('Anna') >= 0, text);
+  assert.strictEqual(await page.locator('.rank.scored', { hasText: 'Anna' }).count(), 1);
+  await page.getByRole('button', { name: 'Punkte zurücksetzen' }).click();
+  await page.getByRole('button', { name: 'Abbrechen' }).click();
+  assert.ok((await page.locator('#app').innerText()).indexOf('Zara') >= 0);
+  await page.getByRole('button', { name: 'Punkte zurücksetzen' }).click();
+  await page.getByRole('button', { name: 'Ja, Punkte zurücksetzen' }).click();
+  await page.waitForFunction(function () { return document.body.innerText.indexOf('Zara') < 0; });
+  const stored = await page.evaluate(function () { return localStorage.getItem('werwolf.scores.v1'); });
+  assert.strictEqual(stored, '{}');
+  await page.getByRole('button', { name: 'Home' }).click();
+  const lobby = await page.locator('#app').innerText();
+  assert.ok(lobby.indexOf('Punkte') >= 0);
+  assert.ok(lobby.indexOf('Zara') < 0);
+  await page.close();
 }
 
 main().catch(function (error) {
