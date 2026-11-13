@@ -204,10 +204,12 @@
       dorfbewohner: 'Du hast keine Sonderfähigkeit. Nachts schläfst du.',
       hexe: 'Du hast ' + (state.healPotions || (person && person.healsLeft) || 2) +
         ' Heiltränke für das ganze Spiel, in einer Nacht auch mehrere, jedes Haus nur einmal. Dazu einen Gifttrank. Du siehst nicht, wer angegriffen wird.',
-      seherin: 'Nachts siehst du die Rolle einer Person.',
-      amor: 'Nur in der ersten Nacht verbindest du zwei Personen.',
+      seherin: state.seerExact
+        ? 'Nachts siehst du die genaue Rolle einer Person.'
+        : 'Nachts siehst du nur Team Dorfbewohner oder Böse.',
+      amor: 'Nur in der ersten Nacht verbindest du zwei Personen, dich selbst eingeschlossen. Aussetzen geht nicht.',
       jaeger: 'Wenn du stirbst, schießt du auf eine Person.',
-      waschbaer: 'Einmal darfst du die Rolle aus einem bewohnten Haus stehlen. Sie gilt ab der nächsten Nacht.',
+      waschbaer: 'Einmal darfst du die Rolle einer lebenden Person stehlen. Hat sie heute noch nicht gehandelt, gilt die Rolle sofort, sonst ab der nächsten Nacht.',
       nachahmerin: 'Du kannst ' + uses + ' Mal die Fähigkeit einer anderen Person nachahmen und musst sie sofort einsetzen.',
       nutte: 'Jede Nacht schläfst du in einem anderen Haus. Dein eigenes Haus ist leer.',
       russe: 'Einmal am Tag darfst du ein Duell anfangen.',
@@ -271,7 +273,7 @@
 
   function rulesHtml() {
     return '<details class="card"><summary>Kurze Regeln</summary>' +
-      '<ul><li>Nachtfähigkeiten zielen auf Häuser, außer Seherin, Amor und die Schaufel (Personen). Tagsüber gilt immer die Person.</li>' +
+      '<ul><li>Nachtfähigkeiten zielen auf Häuser, außer Seherin, Amor, Waschbär und die Schaufel (Personen). Tagsüber gilt immer die Person.</li>' +
       '<li>Die Nutte ist nachts nie daheim. Ein Treffer auf ihr Haus verpufft, ein Treffer auf das Haus, in dem sie schläft, trifft sie und den Gastgeber.</li>' +
       '<li>Werwölfe: Mehrheit, bei Gleichstand das Haus im Uhrzeigersinn ab dem Bürgermeister.</li>' +
       '<li>Abstimmung: Bürgermeister zählt 1,5. Gleichstand heißt, niemand stirbt.</li>' +
@@ -320,6 +322,7 @@ if (!(poolOn && role === 'werwolf')) sum += count;
       hero('🎴', 'Rollenwahl') +
       '<div class="stack"><p class="lead">' + lead + '</p>' +
       '<button type="button" class="btn secondary" data-act="toggle-pool" aria-pressed="' + (poolOn ? 'true' : 'false') + '">Mehr Rollen als Spieler: ' + (poolOn ? 'an' : 'aus') + '</button>' +
+      '<button type="button" class="btn secondary" data-act="toggle-seer" aria-pressed="' + (state.seerExact ? 'true' : 'false') + '">Seherin sieht genaue Rolle: ' + (state.seerExact ? 'an' : 'aus') + '</button>' +
       (problem ? '<div class="banner error">' + esc(problem) + '</div>' : '') +
       '<div class="card stack">' + rows +
       '<div class="stepper"><span class="role-name">Einsätze ' + esc(W.roleName('nachahmerin')) + '</span><span class="row" style="flex:0 0 auto;align-items:center">' +
@@ -476,8 +479,13 @@ if (!(poolOn && role === 'werwolf')) sum += count;
     }
     if (prompt.kind === 'seer-result') {
       var seen = player(prompt.seenId);
-      return hero('👁️', 'Seherin') + '<section class="stage card"><p class="eyebrow">Seherin</p><p class="big-role">' + roleIcon(prompt.role) + ' ' + esc(seen ? seen.name : '') + '</p>' +
-        '<p class="lead">ist ' + esc(W.roleName(prompt.role)) + '.</p>' +
+      var exact = !!prompt.exact;
+      var headline = exact
+        ? roleIcon(prompt.role) + ' ' + esc(seen ? seen.name : '')
+        : esc(seen ? seen.name : '');
+      var detail = exact ? W.roleName(prompt.role) : (prompt.label || 'Team Dorfbewohner');
+      return hero('👁️', 'Seherin') + '<section class="stage card"><p class="eyebrow">Seherin</p><p class="big-role">' + headline + '</p>' +
+        '<p class="lead">ist ' + esc(detail) + '.</p>' +
         '<button type="button" class="btn" data-act="ack">Verdecken</button></section>';
     }
     return choiceBlock(person, prompt);
@@ -492,7 +500,7 @@ if (!(poolOn && role === 'werwolf')) sum += count;
         return choiceButton(p.id, p.name, p.id === state.mayorId ? 'Bürgermeister' : '', 'person');
       }).join('') + choiceButton(0, 'Niemand', 'niemand lynchen', 'person');
     } else if (prompt.kind === 'schaufel') {
-      list = W.deadPlayers(state).map(function (p) {
+      list = W.targetsFor(state, prompt, person.id).map(function (p) {
         return choiceButton(p.id, p.name, 'tot', 'person');
       }).join('');
     } else {
@@ -512,7 +520,7 @@ if (!(poolOn && role === 'werwolf')) sum += count;
     if (prompt.kind === 'heal') skipLabel = (state.heals || []).length ? 'Keine weiteren Heiltränke' : 'Keinen Heiltrank';
     if (prompt.kind === 'poison') skipLabel = 'Kein Gift';
     var canSkip = !prompt.forced && (prompt.kind === 'steal' || prompt.kind === 'copy' || prompt.kind === 'heal' ||
-      prompt.kind === 'poison' || prompt.kind === 'schaufel' || prompt.kind === 'wolf' || prompt.kind === 'seer' || prompt.kind === 'amor');
+      prompt.kind === 'poison' || prompt.kind === 'schaufel' || prompt.kind === 'wolf' || prompt.kind === 'seer');
     var skip = canSkip ? '<button type="button" class="btn secondary" data-act="skip">' + skipLabel + '</button>' : '';
     var confirmLabel = prompt.kind === 'vote' ? 'Stimme abgeben' : (prompt.kind === 'nutte' ? 'Hier schlafen' : 'Fertig');
     return intro + wolves + '<div class="stack">' + list + '</div>' +
@@ -524,9 +532,9 @@ if (!(poolOn && role === 'werwolf')) sum += count;
       vote: 'Wen wählst du? Der Bürgermeister zählt 1,5. Bei Gleichstand stirbt niemand.',
       wolf: 'Das Rudel wählt ein Haus. Du siehst, was die anderen Werwölfe schon gewählt haben.',
       nutte: 'In wessen Haus schläfst du diese Nacht? Dein eigenes Haus bleibt leer.',
-      steal: 'Du kannst die Rolle aus einem bewohnten Haus stehlen. Sie gilt ab der nächsten Nacht. Ist niemand zu Hause, passiert nichts.',
+      steal: 'Wessen Rolle stiehlst du? Hat die Person heute noch nicht gehandelt, gilt der Diebstahl sofort und du spielst die neue Fähigkeit noch in dieser Nacht. Sonst ab der nächsten Nacht. Das Haus der Nutte spielt keine Rolle.',
       seer: 'Wessen Rolle willst du sehen?',
-      amor: 'Wähle zwei Personen. Sie erfahren Partner und Rollen.',
+      amor: 'Wähle zwei Personen. Du selbst darfst dabei sein. Aussetzen geht nicht. Wer heute schon dran war, erfährt die Liebe erst in der nächsten Nacht.',
       copy: 'Wen ahmst du nach? Die Fähigkeit ist frisch und muss in dieser Nacht eingesetzt werden.',
       heal: 'Du darfst ein Haus schützen, ohne zu wissen, wer angegriffen wird. Der Trank gilt nur diese Nacht und hält jeden Tod in diesem Haus auf: Wölfe, Gift und nächtliche Schüsse. Jedes Haus nur einmal. Noch ' +
         (prompt.healsLeft || 0) + ' Heiltrank' + ((prompt.healsLeft || 0) === 1 ? '' : 'e') + '.',
@@ -614,11 +622,11 @@ if (!(poolOn && role === 'werwolf')) sum += count;
         return choiceButton(p.id, p.name, '', 'person');
       }).join('');
       return header('Duell', russe ? russe.name : 'Russe') + hero('🎲', 'Duell') + '<div class="stack">' + errorHtml() +
-        '<div class="banner love">' + esc(russe ? russe.name : '') + ' ist der Russe.</div>' +
+        '<div class="banner love">' + esc(duel.forced ? 'Du musst jetzt ein Duell anfangen. Nur heute.' : ((russe ? russe.name : '') + ' ist der Russe.')) + '</div>' +
         '<p class="lead">Fordere 1 bis 5 Personen heraus. Du schießt zuerst, dann in der gewählten Reihenfolge, immer im Kreis. Eine Kugel, sechs Kammern, keine neue Drehung.</p>' +
         '<div class="stack">' + foes + '</div>' +
         '<button type="button" class="btn" data-act="confirm">Duell starten</button>' +
-        '<button type="button" class="btn secondary" data-act="cancel">Abbrechen</button></div>';
+        (duel.forced ? '' : '<button type="button" class="btn secondary" data-act="cancel">Abbrechen</button>') + '</div>';
     }
     var puller = player(duel.order[duel.pull % duel.order.length]);
     var name = puller ? puller.name : '';
@@ -727,6 +735,10 @@ if (duel.stage === 'pull-handoff' || duel.stage === 'pull-ready') {
     }
     if (type === 'toggle-pool') {
       act({ type: 'toggle-pool' });
+      return;
+    }
+    if (type === 'toggle-seer') {
+      act({ type: 'toggle-seer' });
       return;
     }
     if (type === 'wolf-min' || type === 'wolf-max') {

@@ -245,6 +245,7 @@
     state.nachUses = 1;
     state.healPotions = 2;
     state.rolePool = true;
+    state.seerExact = false;
     state.wolfMin = state.counts.werwolf || 1;
     state.wolfMax = state.counts.werwolf || 1;
     state.error = '';
@@ -279,9 +280,11 @@
     state.rolePool = rolePool;
     state.wolfMin = wolfMin;
     state.wolfMax = wolfMax;
+    state.seerExact = !!opts.seerExact;
     state.config.rolePool = rolePool;
     state.config.wolfMin = wolfMin;
     state.config.wolfMax = wolfMax;
+    state.config.seerExact = state.seerExact;
     note(state, 'Rollen verteilt');
     return state;
   }
@@ -318,6 +321,8 @@
       copyHexes: [],
       pendingThefts: [],
       pendingRevives: [],
+      pendingDuels: [],
+      shownDead: [],
       votes: {},
       lastTally: null,
       duel: null,
@@ -395,6 +400,7 @@
       nachUses: state.nachUses,
       healPotions: state.healPotions == null ? 2 : state.healPotions,
       rolePool: !!state.rolePool,
+      seerExact: !!state.seerExact,
       wolfMin: state.wolfMin,
       wolfMax: state.wolfMax,
       log: state.log
@@ -746,6 +752,7 @@
     state.nightNumber += 1;
     applyThefts(state);
     clearNightScratch(state);
+    state.shownDead = state.players.filter(function (p) { return !p.alive; }).map(function (p) { return p.id; });
     state.order = livingIds(state);
     state.cursor = 0;
     state.nightDone = [];
@@ -794,11 +801,11 @@
   function passOneAction(state, player) {
     if (player.role === 'nutte') return { kind: 'nutte', target: 'house' };
     if (player.role === 'nachahmerin' && player.nachLeft > 0) return { kind: 'copy', target: 'person', depth: 0 };
-    if (player.role === 'waschbaer' && !player.stealUsed) return { kind: 'steal', target: 'house', forced: false };
+    if (player.role === 'waschbaer' && !player.stealUsed) return { kind: 'steal', target: 'person', forced: false };
     if (player.role === 'seherin') return { kind: 'seer', target: 'person' };
-    if (player.role === 'amor' && state.nightNumber === 1) return { kind: 'amor', target: 'person' };
+    if (player.role === 'amor' && state.nightNumber === 1) return { kind: 'amor', target: 'person', forced: true };
     if (player.role === 'werwolf') return { kind: 'wolf', target: 'house' };
-    if (player.role === 'schaufel' && !player.schaufelUsed && deadPlayers(state).length) {
+    if (player.role === 'schaufel' && !player.schaufelUsed && revealedDead(state).length) {
       return { kind: 'schaufel', target: 'person', forced: false };
     }
     return null;
@@ -817,6 +824,13 @@
 
   function deadPlayers(state) {
     return state.players.filter(function (p) { return !p.alive; });
+  }
+
+  function revealedDead(state) {
+    if (!Array.isArray(state.shownDead)) return deadPlayers(state);
+    return state.shownDead.map(function (id) {
+      return playerById(state, id);
+    }).filter(function (p) { return p && !p.alive; });
   }
 
   function goHandoff(state) {
@@ -1140,7 +1154,7 @@
       }
       var optional = {
         steal: true, copy: true, heal: true, poison: true, schaufel: true,
-        wolf: true, seer: true, amor: true
+        wolf: true, seer: true
       };
       if (optional[prompt.kind]) {
         note(state, 'Nichts ' + player.name + ' ' + prompt.kind);
@@ -1235,9 +1249,13 @@
       var seen = chosenId(state, action);
       if (!livingTarget(state, seen) || seen === player.id) return 'Wähle eine andere Person.';
       var target = playerById(state, seen);
-      return [{ kind: 'seer-result', seenId: seen, role: target.role }];
+      var verdict = seerVerdict(state, target);
+      return [{ kind: 'seer-result', seenId: seen, role: target.role, exact: verdict.exact, label: verdict.label }];
     }
     if (prompt.kind === 'amor') {
+      if (living(state).length < 2) {
+        return [{ kind: 'info', text: 'Es leben keine zwei Personen. Die Verbindung entfällt.' }];
+      }
       var pair = chosenIds(state, action);
       if (pair.length !== 2) return 'Wähle genau zwei Personen.';
       if (pair[0] === pair[1]) return 'Zwei verschiedene Personen.';
@@ -1246,26 +1264,37 @@
       return [];
     }
     if (prompt.kind === 'steal') {
-      var stealHouse = chosenId(state, action);
-      if (!livingTarget(state, stealHouse) || stealHouse === player.id) return 'Wähle ein anderes Haus.';
-      if (!ownerHome(state, stealHouse)) return 'In diesem Haus ist niemand. Der Diebstahl gelingt nicht.';
-      var owner = playerById(state, stealHouse);
-      var sameNight = state.nightDone.indexOf(owner.id) < 0;
-      owner.notice = { night: state.nightNumber + (sameNight ? 0 : 1) };
+      var victimId = chosenId(state, action);
+      if (!livingTarget(state, victimId) || victimId === player.id) return 'Wähle eine andere Person.';
+      var victim = playerById(state, victimId);
+      var stolenRole = victim.role;
+      var acted = state.nightDone.indexOf(victim.id) >= 0;
+      victim.notice = { night: state.nightNumber + (acted ? 1 : 0) };
+      if (!acted) {
+        var wasRaccoon = player.role === 'waschbaer';
+        makeVillager(victim);
+        grantFresh(player, stolenRole, state.nachUses, state.healPotions || 2);
+        if (wasRaccoon && stolenRole !== 'waschbaer') player.stealUsed = true;
+        note(state, 'Diebstahl sofort ' + player.name + ' wird ' + stolenRole + ', ' + victim.name + ' ist Dorf');
+        return promptsAfterSteal(state, player);
+      }
       state.pendingThefts.push({
         thiefId: player.id,
-        victimId: owner.id,
-        role: owner.role,
+        victimId: victim.id,
+        role: stolenRole,
         applyNight: state.nightNumber + 1
       });
       if (player.role === 'waschbaer') player.stealUsed = true;
-      note(state, 'Diebstahl geplant von ' + player.name + ' an ' + owner.name);
+      note(state, 'Diebstahl geplant von ' + player.name + ' an ' + victim.name);
       return [];
     }
     if (prompt.kind === 'schaufel') {
       var deadId = chosenId(state, action);
       var dead = playerById(state, deadId);
       if (!dead || dead.alive) return 'Wähle eine tote Person.';
+      if (Array.isArray(state.shownDead) && state.shownDead.indexOf(dead.id) < 0) {
+        return 'Diese Person gilt diese Nacht noch nicht als tot.';
+      }
       if (state.pendingRevives.indexOf(dead.id) < 0) state.pendingRevives.push(dead.id);
       if (!prompt.forced && player.role === 'schaufel') player.schaufelUsed = true;
       return [];
@@ -1275,6 +1304,11 @@
       if (!livingTarget(state, copyId) || copyId === player.id) return 'Wähle eine andere Person.';
       if (!prompt.depth) player.nachLeft -= 1;
       var copied = playerById(state, copyId);
+      if (copied.role === 'russe') {
+        state.pendingDuels = state.pendingDuels || [];
+        state.pendingDuels.push({ actorId: player.id, dueDay: (state.day || 0) + 1 });
+        return [{ kind: 'info', text: 'Am nächsten Tag musst du ein Duell anfangen. Du ziehst zuerst und wählst 1 bis 5 Gegner. Nur an diesem Tag.' }];
+      }
       var ability = abilityOf(copied.role);
       if (!ability || (ability === 'nachahmerin' && prompt.depth)) {
         return [{ kind: 'info', text: ROLE_NAMES[copied.role] + ' hat gerade keine nutzbare Nachtfähigkeit. Der Einsatz verpufft.' }];
@@ -1284,21 +1318,35 @@
     return 'Diese Wahl kenne ich nicht.';
   }
 
+  function promptsAfterSteal(state, player) {
+    if (player.role === 'amor' && state.nightNumber === 1 && living(state).length < 2) {
+      return [{ kind: 'info', text: 'Es leben keine zwei Personen. Die Verbindung entfällt.' }];
+    }
+    var action = passOneAction(state, player);
+    var list = [];
+    if (action) list.push(action);
+    if (player.role === 'hexe') list = list.concat(hexePrompts(state, player));
+    return list;
+  }
+
   function followCopy(state, player, ability, depth) {
     if (ability === 'wolf') return [{ kind: 'kill', attack: 'wolf', target: 'house', forced: true }];
     if (ability === 'jaeger') return [{ kind: 'kill', attack: 'jaeger', target: 'house', forced: true }];
     if (ability === 'seherin') return [{ kind: 'seer', target: 'person', forced: true }];
-    if (ability === 'amor') return [{ kind: 'amor', target: 'person', forced: true }];
+    if (ability === 'amor') {
+      if (living(state).length < 2) {
+        return [{ kind: 'info', text: 'Es leben keine zwei Personen. Die Verbindung entfällt.' }];
+      }
+      return [{ kind: 'amor', target: 'person', forced: true }];
+    }
     if (ability === 'waschbaer') {
-      var home = living(state).some(function (p) {
-        return p.id !== player.id && ownerHome(state, p.id);
-      });
-      if (!home) return [{ kind: 'info', text: 'Kein bewohntes Haus. Der Diebstahl verpufft.' }];
-      return [{ kind: 'steal', target: 'house', forced: true }];
+      var someone = living(state).some(function (p) { return p.id !== player.id; });
+      if (!someone) return [{ kind: 'info', text: 'Niemand da. Der Diebstahl verpufft.' }];
+      return [{ kind: 'steal', target: 'person', forced: true }];
     }
     if (ability === 'nutte') return [{ kind: 'nutte', target: 'house', forced: true }];
     if (ability === 'schaufel') {
-      if (!deadPlayers(state).length) {
+      if (!revealedDead(state).length) {
         return [{ kind: 'info', text: 'Es liegt niemand tot da. Der Einsatz verpufft.' }];
       }
       return [{ kind: 'schaufel', target: 'person', forced: true }];
@@ -1421,6 +1469,11 @@
       if (!isFinite(nextMax) || nextMax < 0) nextMax = 0;
       state.wolfMax = nextMax;
       if (!isInt(state.wolfMin) || state.wolfMin > nextMax) state.wolfMin = nextMax;
+      state.error = '';
+      return;
+    }
+    if (action.type === 'toggle-seer') {
+      state.seerExact = !state.seerExact;
       state.error = '';
       return;
     }
@@ -1550,9 +1603,27 @@
     state.announce = null;
     if (then === 'end') setScreen(state, 'end');
     else if (then === 'night') beginNight(state);
-    else if (then === 'discuss') setScreen(state, 'discuss');
     else if (then === 'apply-vote') applyCondemn(state);
-    else setScreen(state, 'discuss');
+    else if (!openForcedDuel(state)) setScreen(state, 'discuss');
+  }
+
+  function openForcedDuel(state) {
+    var list = state.pendingDuels || [];
+    var idx = -1;
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].dueDay === state.day) { idx = i; break; }
+    }
+    if (idx < 0) return false;
+    var item = list.splice(idx, 1)[0];
+    var actor = playerById(state, item.actorId);
+    var foes = living(state).filter(function (p) { return actor && p.id !== actor.id; });
+    if (!actor || !actor.alive || !foes.length) return false;
+    state.duel = { stage: 'pick', russeId: actor.id, forced: true };
+    state.selection = [];
+    state.error = '';
+    setScreen(state, 'duel');
+    note(state, 'Erzwungenes Duell ' + actor.name);
+    return true;
   }
 
   function turnSend(state, action) {
@@ -1669,6 +1740,10 @@
     var duel = state.duel;
     if (!duel) return;
     if (action.type === 'cancel' && (duel.stage === 'who' || duel.stage === 'pick')) {
+      if (duel.forced) {
+        state.error = 'Das Duell musst du anfangen.';
+        return;
+      }
       state.duel = null;
       state.selection = [];
       state.error = '';
@@ -1704,17 +1779,21 @@
       return;
     }
     if (duel.stage === 'pick') {
+      if (action.type === 'cancel') {
+        if (duel.forced) {
+          state.error = 'Das Duell musst du anfangen.';
+          return;
+        }
+        state.duel = null;
+        setScreen(state, 'discuss');
+        return;
+      }
       if (action.type === 'select') {
         var pick = Number(action.id);
         if (pick === duel.russeId) return;
         if (!livingTarget(state, pick)) return;
         rotateSelection(state, pick);
         if (state.selection.length > 5) state.selection = state.selection.slice(0, 5);
-        return;
-      }
-      if (action.type === 'cancel') {
-        state.duel = null;
-        setScreen(state, 'discuss');
         return;
       }
       if (action.type !== 'confirm') return;
@@ -1857,9 +1936,15 @@
     return ROLE_NAMES[role] || role;
   }
 
+  function seerVerdict(state, player) {
+    if (state && state.seerExact) return { exact: true, label: roleName(player.role) };
+    var evil = player.role === 'werwolf' || player.role === 'politiker' || player.role === 'waschbaer';
+    return { exact: false, label: evil ? 'Böse' : 'Team Dorfbewohner' };
+  }
+
   function targetsFor(state, prompt, selfId) {
     if (!prompt) return [];
-    if (prompt.kind === 'schaufel') return deadPlayers(state);
+    if (prompt.kind === 'schaufel') return revealedDead(state);
     if (prompt.kind === 'amor') return living(state);
     if (prompt.kind === 'seer' || prompt.kind === 'copy') {
       return living(state).filter(function (p) { return p.id !== selfId; });
@@ -1893,6 +1978,7 @@
     note: note,
     report: report,
     roleName: roleName,
+    seerVerdict: seerVerdict,
     playerById: playerById,
     occupants: occupants,
     isAway: isAway,
@@ -1910,6 +1996,7 @@
     grantPoints: grantPoints,
     awardOnce: awardOnce,
     deadPlayers: deadPlayers,
+    revealedDead: revealedDead,
     beginNight: beginNight,
     everyoneRevealed: everyoneRevealed,
     adoptSaved: adoptSaved,

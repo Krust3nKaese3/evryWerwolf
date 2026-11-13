@@ -43,10 +43,10 @@ Anzeigenamen stehen nur in `ROLE_NAMES` in `game.js`.
 | Werwolf | Wölfe | Nachts wählt das Rudel gemeinsam ein Haus. |
 | Dorfbewohner | Dorf | Keine. Tippt nachts den eigenen Namen und dann „Ich will gar nichts machen“. |
 | Hexe | Dorf | Heiltränke für das ganze Spiel, Anzahl in der Einrichtung (1 bis 8, Standard 2), plus ein Gifttrank. Sie sieht das Opfer nicht. |
-| Seherin | Dorf | Sieht nachts die Rolle einer **Person**. |
-| Amor | Dorf | Nur in Nacht 1, verbindet zwei **Personen**. |
+| Seherin | Dorf | Sieht nachts eine **Person**. Standard nur **Team Dorfbewohner** oder **Böse**. Der Schalter „Seherin sieht genaue Rolle“ zeigt die Rolle. |
+| Amor | Dorf | Nur in Nacht 1, verbindet zwei **Personen**, sich selbst eingeschlossen. Aussetzen geht nicht. |
 | Jäger | Dorf | Schießt, wenn er stirbt, auf eine **Person**. |
-| Waschbär | Dorf, bis er stiehlt | Einmal optional die Rolle aus einem bewohnten **Haus** stehlen. |
+| Waschbär | Dorf, bis er stiehlt | Einmal optional die Rolle einer lebenden **Person** stehlen. |
 | Nachahmerin | Dorf | Begrenzt oft die Fähigkeit einer anderen Person frisch nachahmen und sofort einsetzen. Anzahl in der Einrichtung, Standard 1, höchstens 5. |
 | Nutte | Dorf | Jede Nacht Pflicht: in einem anderen **Haus** schlafen. |
 | Russe | Dorf | Einmal am Tag ein Duell. Keine Nachtaktion. |
@@ -57,11 +57,11 @@ Mehr als eine Karte derselben Rolle ist erlaubt, solange die Prüfung unten pass
 
 ### Waschbär
 
-Die Aktion kann übersprungen werden, der Screen bietet das ausdrücklich an. Klappt der Diebstahl, bekommt er diese Rolle ab der **nächsten** Nacht, voll aufgeladen (eine bestohlene Hexe hat neue Tränke, auch wenn die alte sie verbraucht hat). Die bestohlene Person wird Dorfbewohner. Ein bestohlener Werwolf wechselt das Lager, der Beraubte ist Dorf. Ein bestohlener Amor hat danach keine Aktion mehr, weil Amor nur in Nacht 1 handelt. Liebe bleibt bei der bestohlenen Person. Das Bürgermeisteramt wandert davon nicht.
+Die Aktion kann übersprungen werden, der Screen bietet das ausdrücklich an. Ziel ist eine lebende **Person** (Personen-Symbol), nicht ihr Haus. Die Nutte kann also bestohlen werden, egal wo sie schläft. Ein leeres Haus gibt es für ihn nicht.
 
-Die bestohlene Person erfährt es auf ihrem nächsten eigenen privaten Zug: noch in derselben Nacht, wenn sie ihren Namen noch nicht abgehakt hat, sonst in der nächsten Nacht. Steht in dieser Nacht noch ihre alte Aktion an, darf sie die noch ausführen. Andere sehen keinen Extra-Screen, an dem man den Diebstahl erkennen könnte.
+Hat die Person ihren Namen in dieser Nacht **noch nicht** angetippt, gilt der Diebstahl sofort: sie ist ab jetzt Dorfbewohner und erfährt das, sobald sie ihren Namen tippt. Der Waschbär spielt die neue Fähigkeit noch in derselben Nacht weiter, voll aufgeladen. Hat sie schon gehandelt, bleibt es bei der alten Regel: die Rolle wechselt erst in der **nächsten** Nacht, und sie darf die alte Aktion dieser Nacht behalten, wenn sie noch ansteht. In beiden Fällen erfährt sie es nur auf dem eigenen privaten Zug.
 
-Ist in dem Haus niemand (die Nutte ist nachts nie daheim), passiert nichts und der eine Einsatz bleibt erhalten.
+Die bestohlene Person wird auch dann Dorfbewohner, wenn der Waschbär vorher stirbt. Der Diebstahl selbst beendet das Spiel nicht. Gewertet wird erst bei der nächsten normalen Siegprüfung. Ein gestohlener Werwolf macht den Waschbären zum Wolf, das Rudel ist also nicht weg. Ein bestohlener Amor hat in einer späteren Nacht keine Aktion, weil Amor nur in Nacht 1 handelt. Stiehlt er den Amor noch in Nacht 1, bevor der Amor dran war, verbindet er selbst. Liebe bleibt bei der bestohlenen Person. Das Bürgermeisteramt wandert davon nicht.
 
 ### Nachahmerin
 
@@ -72,11 +72,11 @@ Sie sucht eine lebende **Person** als Vorlage (Personen-Symbol) und muss die Kop
 - Seherin: eine Person ansehen
 - Hexe: die eingestellte Zahl Heiltränke, frisch, plus ein Gifttrank, sofort in dieser Nacht und ohne das Opfer zu sehen
 - Amor: ein weiteres Paar, auch nach Nacht 1
-- Waschbär: muss stehlen, mit den normalen Folgen ab der nächsten Nacht
+- Waschbär: muss eine Person bestehlen, mit denselben Folgen wie der echte Diebstahl
 - Nutte: schläft in dieser Nacht ebenfalls außer Haus
 - Schaufel: muss eine tote Person wählen, falls jemand tot ist
 
-Dorfbewohner, Russe und Politiker haben nichts Nutzbares: der Einsatz ist verbraucht und verpufft. Eine kopierte Nachahmerin erlaubt genau eine weitere Vorlage, nicht eine endlose Kette. Die Kopie ist unabhängig davon, was das Original schon verbraucht hat.
+Dorfbewohner und Politiker haben nichts Nutzbares: der Einsatz ist verbraucht und verpufft. Der Russe hat keine Nachtfähigkeit. Kopiert sie ihn, muss sie am **nächsten Tag** ein Duell anfangen, 1 bis 5 Gegner wählen und selbst zuerst ziehen. Nur an diesem Tag. Leben dabei keine zwei Personen, entfällt eine kopierte Amor-Verbindung, der Einsatz ist trotzdem verbraucht. Eine kopierte Nachahmerin erlaubt genau eine weitere Vorlage, nicht eine endlose Kette. Die Kopie ist unabhängig davon, was das Original schon verbraucht hat.
 
 ### Nutte
 
@@ -90,23 +90,23 @@ Er selbst schießt zuerst, danach die 1 bis 5 herausgeforderten Personen in der 
 
 ### Politiker
 
-Stirbt er durch die Abstimmung, endet das Spiel sofort und **er allein** gewinnt. Liebeskummer und ein Jägerschuss werden dann nicht mehr ausgespielt. Jeder andere Tod (Nacht, Gift, Jäger, Duell, Liebe) ist nur eine Niederlage für ihn, das Spiel geht weiter.
+Wird **er selbst** durch die Abstimmung gewählt, endet das Spiel sofort und **er allein** gewinnt. Sein Liebespartner stirbt dabei nicht mit, und ein Jägerschuss wird nicht mehr ausgespielt. Wird dagegen sein Liebespartner gewählt, stirbt er durch die Liebe mit, und das Spiel geht normal weiter, inklusive Jäger. Jeder andere Tod (Nacht, Gift, Jäger, Duell, Liebe) ist nur eine Niederlage für ihn, das Spiel geht weiter.
 
 ### Schaufel
 
-Einmal pro Spiel, nachts, optional, Ziel ist eine tote Person (Personen-Symbol; Tote haben kein Haus im Spiel). Die Person kommt zur **nächsten Morgenansage** zurück, mit derselben Rolle und demselben Kräftezustand (verbrauchte Tränke bleiben verbraucht). Liebe endet mit dem Tod und kommt nicht zurück. Sie sitzt wieder in der Runde, ist nachts dran und zählt wieder für das Amt. Die Wiederbelebung gilt auch, wenn die Schaufel in derselben Nacht noch stirbt. Gewertet wird erst nach der Rückkehr, eine zurückgeholte Person kann den Sieg also noch drehen. Auch ein Werwolf kann zurückgeholt werden.
+Einmal pro Spiel, nachts, optional, Ziel ist eine Person, die **schon als tot angezeigt** wurde (Personen-Symbol). Tote dieser Nacht stehen erst am Morgen fest, deshalb kann sie niemand holen, der in derselben Nacht stirbt. Die Person kommt zur **nächsten Morgenansage** zurück, mit derselben Rolle und demselben Kräftezustand (verbrauchte Tränke bleiben verbraucht). Liebe endet mit dem Tod und kommt nicht zurück. Sie sitzt wieder in der Runde, ist nachts dran und zählt wieder für das Amt. Die Wiederbelebung gilt auch, wenn die Schaufel in derselben Nacht noch stirbt. Gewertet wird erst nach der Rückkehr, eine zurückgeholte Person kann den Sieg also noch drehen. Auch ein Werwolf kann zurückgeholt werden.
 
 ## Häuser und Personen
 
 Nachts zielen Fähigkeiten auf **Häuser** (Haus-Symbol vor dem Namen). Tagsüber auf **Personen** (Personen-Symbol).
 
-Ausnahmen, auch als Kopie der Nachahmerin: **Seherin** und **Amor** zielen nachts auf Personen. Die Seherin kann die Nutte direkt ansehen. Amor kann die Nutte verbinden. Die **Schaufel** zielt auf tote Personen. Der **Russe** und die **Abstimmung** auch. Der **Jäger**, der nachts stirbt, schießt in der Morgenauflösung auf eine Person, nicht auf ein Haus. Ein von der Nachahmerin kopierter Jägerschuss in der Nacht bleibt ein Haus.
+Ausnahmen, auch als Kopie der Nachahmerin: **Seherin**, **Amor** und **Waschbär** zielen nachts auf Personen. Die Seherin kann die Nutte direkt ansehen. Ohne den Schalter „Seherin sieht genaue Rolle“ (er ist aus) sagt sie nur **Team Dorfbewohner** oder **Böse**. Böse sind Werwolf, Politiker und der Waschbär, solange er noch Waschbär ist. Danach zählt die Rolle, die er gerade hat. Es gilt die Rolle im Moment des Hinsehens. Amor kann die Nutte verbinden, auch sich selbst. Der Waschbär stiehlt die Person, unabhängig von ihrem Haus. Die **Schaufel** zielt auf tote Personen, die schon angezeigt wurden. Der **Russe** und die **Abstimmung** auch. Der **Jäger**, der nachts stirbt, schießt in der Morgenauflösung auf eine Person, nicht auf ein Haus. Ein von der Nachahmerin kopierter Jägerschuss in der Nacht bleibt ein Haus.
 
 Ein nächtlicher Treffer auf ein Haus erwischt alle, die gerade darin sind: die Besitzerin, wenn sie daheim ist, plus jede Nutte (oder nachgeahmte Nutte), die dort schläft. Die echte Nutte ist nie daheim. Ein Treffer auf ihr eigenes Haus tut ihr nichts. Ein Treffer auf das Haus, in dem sie schläft, tötet sie und den Gastgeber, falls der daheim ist.
 
 Ein Heiltrank schützt ein Haus für **diese Nacht** vor jedem Tod darin: Werwolf-Angriff, kopierter Werwolf, Gift und nächtlicher Schuss. Alle, die in dem Haus sind, bleiben am Leben. Das eigene Haus darf sie heilen, vergiften darf sie es nicht. Sie erfährt nicht, welches Haus angegriffen wird, und legt den Trank blind. Mehrere Tränke in derselben Nacht sind erlaubt, jeder auf ein anderes Haus. Übrige Tränke bleiben für spätere Nächte. Die Nacht wird erst aufgelöst, wenn alle lebenden Personen fertig sind, deshalb ist die Reihenfolge egal.
 
-Amor und die Seherin treffen Personen, auch die Nutte. Der Waschbär trifft das Haus. Ist die Besitzerin nicht daheim, gelingt der Diebstahl nicht.
+Amor, die Seherin und der Waschbär treffen Personen, auch die Nutte. Wo die Nutte schläft, ändert den Diebstahl nicht.
 
 ## Nacht
 
@@ -128,9 +128,9 @@ Auflösung, in dieser Reihenfolge:
 
 ## Liebe
 
-Amor und eine Amor-Kopie verbinden je zwei lebende Personen. Zwei getrennte Paare bleiben zwei Paare: A–B und C–D sterben und gewinnen nicht gemeinsam. Eine Kette entsteht nur, wenn jemand doppelt verbunden ist: A–B und B–C werden A–B–C.
+Amor und eine Amor-Kopie verbinden je zwei lebende Personen. Amor darf sich selbst wählen. In Nacht 1 muss er verbinden, der Screen bietet kein Aussetzen. Zwei getrennte Paare bleiben zwei Paare: A–B und C–D sterben und gewinnen nicht gemeinsam. Eine Kette entsteht nur, wenn jemand doppelt verbunden ist: A–B und B–C werden A–B–C.
 
-Stirbt eine Person der Kette, sterben alle verbundenen mit. Jede lebende Person der Gruppe erfährt auf dem nächsten privaten Screen alle Partner und deren Rollen.
+Stirbt eine Person der Kette, sterben alle verbundenen mit. Wer in Nacht 1 noch nicht dran war, sieht auf dem eigenen Zug Partner und Rolle. Wer in Nacht 1 schon gehandelt hat, bevor Amor verbunden hat, sieht denselben großen Hinweis erst am Anfang der **nächsten** Nacht, wenn der eigene Name angetippt wird.
 
 Eine Gruppe gewinnt, wenn **genau ihre Mitglieder** noch leben und es mindestens zwei sind. Das gilt für ein gemischtes Paar, eine reine Dorfgruppe und eine reine Wolfsgruppe. Ein einzelnes anderes Paar, das noch lebt, verhindert den Liebessieg. Der Liebessieg wird vor Dorf und Wölfen geprüft.
 
@@ -214,7 +214,7 @@ Diese Punkte waren so nicht wortwörtlich vorgegeben:
 - Abstimmungs-Gleichstand: niemand stirbt. Zusätzlich gibt es die Stimme „Niemand“.
 - Heiltränke: 1 bis 8 pro Spiel, Standard 2, kein Nachtlimit außer der Restzahl. Jeder Trank ein anderes Haus, nur diese Nacht, gegen jeden Tod darin. Die Hexe sieht das Opfer nicht.
 - Die Hexe sieht nicht, wer in einem Haus schläft.
-- Ein echter Waschbär verliert seinen Einsatz nicht, wenn das Haus leer ist. Die Kopie der Nachahmerin hat den Einsatz dann schon verbraucht, kann aber ein anderes Haus versuchen. Gibt es gar kein bewohntes Haus, verpufft die Kopie.
+- Der Waschbär stiehlt eine Person. Die Kopie der Nachahmerin muss das auch. Gibt es keine andere lebende Person, verpufft die Kopie. Der Diebstahl beendet das Spiel nicht von selbst.
 - Kopierte Nachahmerin: nur eine weitere Vorlage, dann Schluss.
 - Liebessieg für jede zusammenhängende Gruppe, die allein übrig ist, nicht nur für ein gemischtes Paar. Reine Wölfe als Paar gewinnen als Liebespaar, nicht als Rudel.
 - Politiker in so einer Gruppe: es gewinnt die Gruppe, nicht er allein. Sein Alleinsieg ist nur die Wahl.

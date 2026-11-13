@@ -103,10 +103,7 @@ function decide(state, prompt, actorId) {
   }
   if (prompt.kind === 'seer' || prompt.kind === 'copy' || prompt.kind === 'steal') {
     let target = others(state, actorId)[0];
-    if (prompt.kind === 'steal') {
-      target = others(state, actorId).filter(function (person) { return ownerHome(state, person.id); })[0];
-      if (!target) return { type: 'skip' };
-    }
+    if (!target) return prompt.kind === 'steal' && !prompt.forced ? { type: 'skip' } : { type: 'ack' };
     if (prompt.kind === 'copy') {
       const useful = others(state, actorId).filter(function (person) {
         return person.role === 'amor' || person.role === 'hexe' || person.role === 'seherin' || person.role === 'nutte' || person.role === 'waschbaer' || person.role === 'werwolf';
@@ -494,17 +491,18 @@ test('Getrennte Paare bleiben getrennt, eine zweite Liebe verkettet', function (
   assert.strictEqual(p(state, 5).nachLeft, 0);
 });
 
-test('Waschbär: leeres Nuttenhaus, Amor-Niete, Liebe bleibt, Wolf wechselt das Lager', function () {
-  const empty = make(['waschbaer', 'nutte', 'dorfbewohner', 'werwolf']);
-  revealAndStart(empty);
-  openNight(empty, 2);
-  W.send(empty, { type: 'confirm', id: 3 });
-  openNight(empty, 1);
-  W.send(empty, { type: 'confirm', id: 2 });
-  assert.ok(empty.error);
-  assert.strictEqual(p(empty, 1).stealUsed, false);
-  W.send(empty, { type: 'skip' });
-  assert.strictEqual(p(empty, 1).stealUsed, false);
+test('Waschbär stiehlt Personen, sofort oder in der nächsten Nacht, und beendet das Spiel nicht', function () {
+  const away = make(['waschbaer', 'nutte', 'dorfbewohner', 'werwolf']);
+  revealAndStart(away);
+  openNight(away, 2);
+  W.send(away, { type: 'confirm', id: 3 });
+  openNight(away, 1);
+  assert.strictEqual(W.view(away).prompt.target, 'person');
+  W.send(away, { type: 'confirm', id: 2 });
+  assert.strictEqual(away.error, '');
+  assert.strictEqual(p(away, 1).stealUsed, true);
+  assert.strictEqual(p(away, 1).role, 'waschbaer');
+  assert.strictEqual(away.pendingThefts[0].role, 'nutte');
 
   const amor = make(['waschbaer', 'amor', 'dorfbewohner', 'werwolf']);
   revealAndStart(amor);
@@ -537,9 +535,15 @@ test('Waschbär: leeres Nuttenhaus, Amor-Niete, Liebe bleibt, Wolf wechselt das 
   revealAndStart(wolf);
   openNight(wolf, 1);
   W.send(wolf, { type: 'confirm', id: 2 });
-  openNight(wolf, 2);
-  if (W.view(wolf).prompt.kind === 'notice') W.send(wolf, { type: 'ack' });
+  assert.strictEqual(wolf.winner, null);
+  assert.strictEqual(wolf.screen, 'night');
+  assert.strictEqual(p(wolf, 1).role, 'werwolf');
+  assert.strictEqual(p(wolf, 2).role, 'dorfbewohner');
+  assert.strictEqual(W.view(wolf).prompt.kind, 'wolf');
   W.send(wolf, { type: 'skip' });
+  openNight(wolf, 2);
+  assert.strictEqual(W.view(wolf).prompt.kind, 'notice');
+  W.send(wolf, { type: 'ack' });
   [3, 4].forEach(function (id) { openNight(wolf, id); W.send(wolf, { type: 'ack' }); });
   W.send(wolf, { type: 'ack' });
   W.send(wolf, { type: 'to-vote' });
@@ -573,7 +577,9 @@ test('Nachahmerin verbraucht einen Einsatz ohne Fähigkeit und muss beim Waschb�
   W.send(again, { type: 'skip' });
   assert.ok(again.error);
   W.send(again, { type: 'confirm', id: 3 });
-  assert.strictEqual(again.pendingThefts[0].role, 'dorfbewohner');
+  assert.strictEqual(p(again, 1).role, 'dorfbewohner');
+  assert.strictEqual(p(again, 3).role, 'dorfbewohner');
+  assert.strictEqual(again.pendingThefts.length, 0);
   assert.strictEqual(p(again, 2).stealUsed, false);
 });
 
@@ -845,7 +851,8 @@ test('Nutte stirbt mit dem Gastgeber, die Wahl trifft nur sie, die Seherin sieht
   assert.strictEqual(W.view(state).prompt.kind, 'seer');
   assert.strictEqual(W.view(state).prompt.target, 'person');
   W.send(state, { type: 'confirm', id: 1 });
-  assert.strictEqual(W.view(state).prompt.role, 'nutte');
+  assert.strictEqual(W.view(state).prompt.label, 'Team Dorfbewohner');
+  assert.strictEqual(W.view(state).prompt.exact, false);
   W.send(state, { type: 'ack' });
   openNight(state, 2);
   W.send(state, { type: 'ack' });
@@ -869,6 +876,201 @@ test('Nutte stirbt mit dem Gastgeber, die Wahl trifft nur sie, die Seherin sieht
   W.send(day, { type: 'ack' });
   assert.strictEqual(p(day, 1).alive, false);
   assert.strictEqual(p(day, 2).alive, true);
+});
+
+test('Politiker: die eigene Wahl beendet sofort, die Wahl des Partners nicht', function () {
+  const own = make(['politiker', 'jaeger', 'werwolf', 'dorfbewohner', 'dorfbewohner']);
+  revealAndStart(own);
+  sleepNight(own, { 3: function () { W.send(own, { type: 'skip' }); } });
+  if (own.screen === 'announce') W.send(own, { type: 'ack' });
+  W.addLink(own, 1, 2);
+  W.send(own, { type: 'to-vote' });
+  W.living(own).forEach(function (person) {
+    W.send(own, { type: 'vote-pick', id: person.id });
+    W.send(own, { type: 'go' });
+    W.send(own, { type: 'confirm', id: 1 });
+  });
+  W.send(own, { type: 'ack' });
+  assert.strictEqual(own.screen, 'end');
+  assert.strictEqual(own.winner, 'politiker');
+  assert.strictEqual(p(own, 1).alive, false);
+  assert.strictEqual(p(own, 2).alive, true);
+  assert.strictEqual((own.hunters || []).length, 0);
+
+  const partner = make(['politiker', 'jaeger', 'werwolf', 'dorfbewohner', 'dorfbewohner', 'dorfbewohner']);
+  revealAndStart(partner);
+  sleepNight(partner, { 3: function () { W.send(partner, { type: 'skip' }); } });
+  if (partner.screen === 'announce') W.send(partner, { type: 'ack' });
+  W.addLink(partner, 1, 2);
+  W.send(partner, { type: 'to-vote' });
+  W.living(partner).forEach(function (person) {
+    W.send(partner, { type: 'vote-pick', id: person.id });
+    W.send(partner, { type: 'go' });
+    W.send(partner, { type: 'confirm', id: 2 });
+  });
+  W.send(partner, { type: 'ack' });
+  assert.strictEqual(p(partner, 1).alive, false);
+  assert.strictEqual(p(partner, 2).alive, false);
+  assert.notStrictEqual(partner.winner, 'politiker');
+  assert.strictEqual(partner.screen, 'hunter');
+});
+
+test('Amor muss verbinden, darf sich selbst wählen, Nachzügler sehen die Liebe erst in der nächsten Nacht', function () {
+  const state = make(['amor', 'dorfbewohner', 'dorfbewohner', 'werwolf']);
+  revealAndStart(state);
+  openNight(state, 2);
+  W.send(state, { type: 'ack' });
+  openNight(state, 1);
+  assert.strictEqual(W.view(state).prompt.kind, 'amor');
+  assert.strictEqual(W.view(state).prompt.forced, true);
+  W.send(state, { type: 'skip' });
+  assert.ok(state.error);
+  assert.strictEqual(W.view(state).prompt.kind, 'amor');
+  W.send(state, { type: 'select', id: 1 });
+  W.send(state, { type: 'select', id: 2 });
+  W.send(state, { type: 'confirm', ids: [1, 2] });
+  assert.deepStrictEqual(p(state, 1).loverIds, [2]);
+  assert.deepStrictEqual(p(state, 2).loverIds, [1]);
+  openNight(state, 3);
+  assert.notStrictEqual(W.view(state).prompt.kind, 'love');
+  W.send(state, { type: 'ack' });
+  openNight(state, 4);
+  W.send(state, { type: 'skip' });
+  if (state.screen === 'announce') W.send(state, { type: 'ack' });
+  voteNiemand(state);
+  assert.strictEqual(state.nightNumber, 2);
+  openNight(state, 2);
+  assert.strictEqual(W.view(state).prompt.kind, 'love');
+  assert.strictEqual(p(state, 1).role, 'amor');
+  assert.ok(p(state, 2).loverIds.indexOf(1) >= 0);
+});
+
+test('Nachahmerin: Amor ohne zwei Lebende entfällt, der Russe erzwingt am nächsten Tag das Duell', function () {
+  const thin = make(['nachahmerin', 'amor', 'dorfbewohner', 'werwolf']);
+  revealAndStart(thin);
+  openNight(thin, 1);
+  W.send(thin, { type: 'confirm', id: 2 });
+  assert.strictEqual(W.view(thin).prompt.kind, 'amor');
+  thin.players.forEach(function (person) { if (person.id !== 1) person.alive = false; });
+  W.send(thin, { type: 'confirm', ids: [1, 2] });
+  assert.strictEqual(W.view(thin).prompt.kind, 'info');
+  assert.strictEqual((p(thin, 1).loverIds || []).length, 0);
+
+  const state = make(['nachahmerin', 'russe', 'dorfbewohner', 'werwolf', 'dorfbewohner'], { rng: rngConst(0) });
+  revealAndStart(state);
+  openNight(state, 1);
+  W.send(state, { type: 'confirm', id: 2 });
+  assert.strictEqual(W.view(state).prompt.kind, 'info');
+  W.send(state, { type: 'ack' });
+  openNight(state, 4);
+  W.send(state, { type: 'skip' });
+  [2, 3, 5].forEach(function (id) { openNight(state, id); W.send(state, { type: 'ack' }); });
+  if (state.screen === 'announce') W.send(state, { type: 'ack' });
+  assert.strictEqual(state.screen, 'duel');
+  assert.strictEqual(state.duel.forced, true);
+  assert.strictEqual(state.duel.russeId, 1);
+  assert.strictEqual(state.day, 1);
+  W.send(state, { type: 'cancel' });
+  assert.ok(state.error);
+  assert.strictEqual(state.screen, 'duel');
+  W.send(state, { type: 'select', id: 2 });
+  W.send(state, { type: 'confirm', ids: [2] });
+  assert.strictEqual(state.duel.order[0], 1);
+  W.send(state, { type: 'ack' });
+  W.send(state, { type: 'ack' });
+  assert.strictEqual(p(state, 1).alive, false);
+  if (state.screen === 'announce') W.send(state, { type: 'ack' });
+  assert.strictEqual(state.screen, 'discuss');
+  assert.notStrictEqual(state.screen, 'duel');
+});
+
+test('Schaufel sieht nur Tote vom Vortag, ein toter Dieb macht das Opfer trotzdem zum Dorf', function () {
+  const shovel = make(['schaufel', 'dorfbewohner', 'werwolf', 'dorfbewohner']);
+  revealAndStart(shovel);
+  openNight(shovel, 3);
+  W.send(shovel, { type: 'confirm', id: 2 });
+  openNight(shovel, 1);
+  assert.notStrictEqual(W.view(shovel).prompt.kind, 'schaufel');
+  W.send(shovel, { type: 'ack' });
+  [2, 4].forEach(function (id) { openNight(shovel, id); W.send(shovel, { type: 'ack' }); });
+  if (shovel.screen === 'announce') W.send(shovel, { type: 'ack' });
+  voteNiemand(shovel);
+  openNight(shovel, 1);
+  assert.strictEqual(W.view(shovel).prompt.kind, 'schaufel');
+  const targets = W.targetsFor(shovel, W.view(shovel).prompt, 1).map(function (person) { return person.id; });
+  assert.deepStrictEqual(targets, [2]);
+  W.send(shovel, { type: 'confirm', id: 3 });
+  assert.ok(shovel.error);
+
+  const theft = make(['waschbaer', 'seherin', 'werwolf', 'dorfbewohner']);
+  revealAndStart(theft);
+  openNight(theft, 2);
+  W.send(theft, { type: 'confirm', id: 4 });
+  W.send(theft, { type: 'ack' });
+  openNight(theft, 1);
+  W.send(theft, { type: 'confirm', id: 2 });
+  assert.strictEqual(theft.pendingThefts[0].applyNight, 2);
+  openNight(theft, 3);
+  W.send(theft, { type: 'confirm', id: 1 });
+  openNight(theft, 4);
+  W.send(theft, { type: 'ack' });
+  if (theft.screen === 'announce') W.send(theft, { type: 'ack' });
+  assert.strictEqual(p(theft, 1).alive, false);
+  assert.strictEqual(p(theft, 2).role, 'seherin');
+  voteNiemand(theft);
+  assert.strictEqual(theft.screen, 'night');
+  assert.strictEqual(theft.winner, null);
+  assert.strictEqual(p(theft, 2).role, 'dorfbewohner');
+  assert.strictEqual(p(theft, 1).role, 'waschbaer');
+});
+
+test('Seherin sieht standardmäßig das Lager und mit Schalter die genaue Rolle', function () {
+  function look(roles, target, exact) {
+    const state = make(roles);
+    state.seerExact = !!exact;
+    revealAndStart(state);
+    openNight(state, 1);
+    W.send(state, { type: 'confirm', id: target });
+    return W.view(state).prompt;
+  }
+  const roles = ['seherin', 'werwolf', 'politiker', 'waschbaer', 'dorfbewohner', 'hexe'];
+  assert.strictEqual(look(roles, 2, false).label, 'Böse');
+  assert.strictEqual(look(roles, 3, false).label, 'Böse');
+  assert.strictEqual(look(roles, 4, false).label, 'Böse');
+  assert.strictEqual(look(roles, 5, false).label, 'Team Dorfbewohner');
+  assert.strictEqual(look(roles, 6, false).label, 'Team Dorfbewohner');
+  assert.strictEqual(look(roles, 2, true).exact, true);
+  assert.strictEqual(look(roles, 2, true).label, 'Werwolf');
+  assert.strictEqual(look(roles, 4, true).label, 'Waschbär');
+
+  const stolen = make(['seherin', 'waschbaer', 'werwolf', 'dorfbewohner', 'politiker']);
+  revealAndStart(stolen);
+  openNight(stolen, 2);
+  W.send(stolen, { type: 'confirm', id: 4 });
+  assert.strictEqual(p(stolen, 2).role, 'dorfbewohner');
+  W.send(stolen, { type: 'ack' });
+  openNight(stolen, 1);
+  W.send(stolen, { type: 'confirm', id: 2 });
+  assert.strictEqual(W.view(stolen).prompt.label, 'Team Dorfbewohner');
+  const wolfish = make(['seherin', 'waschbaer', 'werwolf', 'dorfbewohner']);
+  revealAndStart(wolfish);
+  openNight(wolfish, 2);
+  W.send(wolfish, { type: 'confirm', id: 3 });
+  assert.strictEqual(p(wolfish, 2).role, 'werwolf');
+  if (W.view(wolfish).prompt.kind === 'wolf') W.send(wolfish, { type: 'skip' });
+  openNight(wolfish, 1);
+  W.send(wolfish, { type: 'confirm', id: 2 });
+  assert.strictEqual(W.view(wolfish).prompt.label, 'Böse');
+  const pending = make(['waschbaer', 'seherin', 'dorfbewohner', 'werwolf']);
+  revealAndStart(pending);
+  openNight(pending, 3);
+  W.send(pending, { type: 'ack' });
+  openNight(pending, 1);
+  W.send(pending, { type: 'confirm', id: 3 });
+  assert.strictEqual(p(pending, 1).role, 'waschbaer');
+  openNight(pending, 2);
+  W.send(pending, { type: 'confirm', id: 1 });
+  assert.strictEqual(W.view(pending).prompt.label, 'Böse');
 });
 
 console.log(passed + ' Regeltests');

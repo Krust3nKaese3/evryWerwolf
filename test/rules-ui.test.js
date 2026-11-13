@@ -48,6 +48,7 @@ async function main() {
   try {
     await gateAndOrder(browser, base);
     await loveScreen(browser, base);
+    await personScreens(browser, base);
     await pointsStay(browser, base);
   } finally {
     await browser.close();
@@ -98,6 +99,12 @@ async function gateAndOrder(browser, base) {
   await page.getByRole('button', { name: 'Weiter zu den Rollen' }).click();
   const pool = page.getByRole('button', { name: /Mehr Rollen als Spieler/ });
   if ((await pool.innerText()).includes('an')) await pool.click();
+  const seerToggle = page.getByRole('button', { name: /Seherin sieht genaue Rolle/ });
+  assert.ok((await seerToggle.innerText()).includes('aus'));
+  await seerToggle.click();
+  assert.ok((await seerToggle.innerText()).includes('an'));
+  await seerToggle.click();
+  assert.ok((await seerToggle.innerText()).includes('aus'));
   await setCount(page, 'Werwolf', 1);
   await setCount(page, 'Amor', 1);
   await setCount(page, 'Dorfbewohner', 2);
@@ -150,6 +157,91 @@ async function loveScreen(browser, base) {
   assert.ok(text.indexOf('Du bist verliebt') >= 0, text);
   assert.ok(text.indexOf('Chris') >= 0 && text.indexOf('Werwolf') >= 0, text);
   await page.close();
+}
+
+function nightTurn(role, kind, target, night) {
+  return {
+    v: 1,
+    screen: 'night',
+    step: 'show',
+    nightNumber: night || 1,
+    day: night === 2 ? 1 : 0,
+    mayorId: 1,
+    activeId: 1,
+    nightDone: [],
+    shownDead: [],
+    players: [
+      { id: 1, name: 'Anna', role: role, alive: true, loverIds: [], healsLeft: 0, poisonLeft: false, nachLeft: 0, stealUsed: false },
+      { id: 2, name: 'Bea', role: 'dorfbewohner', alive: true, loverIds: [], healsLeft: 0, poisonLeft: false, nachLeft: 0 },
+      { id: 3, name: 'Chris', role: 'werwolf', alive: true, loverIds: [], healsLeft: 0, poisonLeft: false, nachLeft: 0 },
+      { id: 4, name: 'Dora', role: 'nutte', alive: true, loverIds: [], healsLeft: 0, poisonLeft: false, nachLeft: 0 }
+    ],
+    prompts: [{ kind: kind, target: target, forced: kind === 'amor' }],
+    promptIndex: 0,
+    selection: [],
+    seenLove: {},
+    log: [],
+    heals: [],
+    hosts: { 4: 2 },
+    wolfVotes: {},
+    healPotions: 2,
+    nachUses: 1,
+    pendingThefts: []
+  };
+}
+
+async function personScreens(browser, base) {
+  const page = await browser.newPage({ viewport: { width: 412, height: 915 }, locale: 'de-DE' });
+  await page.addInitScript(function (payload) {
+    window.EveryAppBridge = {
+      storage: {
+        get: async function (key) { return key === 'werwolf.game.v1' ? payload : null; },
+        set: async function () {},
+        remove: async function () {}
+      }
+    };
+  }, nightTurn('waschbaer', 'steal', 'person', 1));
+  await page.goto(base);
+  const steal = await page.locator('#app').innerText();
+  assert.ok(steal.indexOf('Haus von') < 0, steal);
+  assert.ok(steal.indexOf('Dora') >= 0, steal);
+  const personMark = await page.locator('#app [aria-label="Person"]').count();
+  assert.ok(personMark >= 1);
+  await page.close();
+
+  const amor = await browser.newPage({ viewport: { width: 412, height: 915 }, locale: 'de-DE' });
+  await amor.addInitScript(function (payload) {
+    window.EveryAppBridge = {
+      storage: {
+        get: async function (key) { return key === 'werwolf.game.v1' ? payload : null; },
+        set: async function () {},
+        remove: async function () {}
+      }
+    };
+  }, nightTurn('amor', 'amor', 'person', 1));
+  await amor.goto(base);
+  const text = await amor.locator('#app').innerText();
+  assert.ok(text.indexOf('Anna') >= 0, text);
+  assert.strictEqual(await amor.getByRole('button', { name: 'Ich will gar nichts machen' }).count(), 0);
+  await amor.close();
+
+  const coarse = await browser.newPage({ viewport: { width: 412, height: 915 }, locale: 'de-DE' });
+  const result = nightTurn('seherin', 'seer-result', 'person', 1);
+  result.prompts = [{ kind: 'seer-result', seenId: 3, role: 'werwolf', exact: false, label: 'Böse' }];
+  await coarse.addInitScript(function (payload) {
+    window.EveryAppBridge = {
+      storage: {
+        get: async function (key) { return key === 'werwolf.game.v1' ? payload : null; },
+        set: async function () {},
+        remove: async function () {}
+      }
+    };
+  }, result);
+  await coarse.goto(base);
+  const seen = await coarse.locator('#app').innerText();
+  assert.ok(seen.indexOf('ist Böse') >= 0, seen);
+  assert.ok(seen.indexOf('ist Werwolf') < 0, seen);
+  await coarse.close();
 }
 
 async function pointsStay(browser, base) {
