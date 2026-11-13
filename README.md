@@ -120,7 +120,7 @@ Auflösung, in dieser Reihenfolge:
 
 1. Jeder Tod in einem geheilten Haus verpufft, egal ob Wölfe, Gift oder nächtlicher Schuss. Sonst sterben alle im Haus. Leere Häuser tun nichts.
 2. Liebesketten sterben mit. Liebe endet damit.
-3. Jäger, die schießen müssen, stehen in einer Liste. Jeder tippt den eigenen Namen, danach grau. Die Reihenfolge wählen sie selbst.
+3. Jäger, die schießen müssen, stehen in einer Liste. Jeder tippt den eigenen Namen, danach grau. Die Reihenfolge wählen sie selbst. Holt die Schaufel ihn zurück, schießt er beim nächsten Tod wieder.
 4. Die Schaufel macht ihre Toten wieder lebendig.
 5. Stirbt der Bürgermeister, ist das Amt schon beim Tod weitergegangen. Zusätzlich wandert es am Ende von Nacht 2 und jeder späteren Nacht einen lebenden Sitz im Uhrzeigersinn. Nach Nacht 1 gibt es diese Extra-Drehung nicht.
 6. Sieg prüfen.
