@@ -25,11 +25,11 @@ Nach einem Push die Mini-App in EveryApp mit ⟳ aktualisieren.
 ## Ablauf
 
 1. **Namen.** Nacheinander, im Uhrzeigersinn. Diese Reihenfolge ist die Sitzordnung und wird sofort gespeichert.
-2. **Rollen.** Ein Vorschlag hängt von der Spielerzahl ab und lässt sich ändern. Die Summe muss die Spielerzahl treffen. Danach werden die Rollen zufällig verteilt.
-3. **Aufdecken.** Das Handy geht reihum. Zuerst steht nur der Name, nach dem Tippen die eigene Rolle, dann wird sie verdeckt.
-4. **Tag 1** beginnt vor der ersten Nacht. Der Bürgermeister ist die erste Person der Sitzordnung. Diskussion, optional ein Duell, dann geheime Abstimmung.
-5. **Nacht.** Zwei Runden, jedes Mal alle Lebenden in Sitzordnung, auch Dorfbewohner. Vor jedem Blick ein Übergabeschirm ohne Inhalt der vorherigen Person.
-6. **Morgen.** Die App sagt, wer gestorben ist und wen die Schaufel zurückgeholt hat. Danach der nächste Tag.
+2. **Rollen.** Ein Vorschlag hängt von der Spielerzahl ab und lässt sich ändern. Die Summe muss die Spielerzahl treffen. Heiltränke der Hexe: 1 bis 8, Standard 2. Nachahmungen: 1 bis 5, Standard 1. Danach werden die Rollen zufällig verteilt.
+3. **Aufdecken.** Alle Namen stehen in einer Liste. Jede Person tippt den eigenen Namen. Danach ist der Name grau, bleibt aber antippbar, solange das Spiel noch nicht gestartet ist. **Spiel starten** beginnt Nacht 1.
+4. **Nacht 1** kommt vor Tag 1. Der Bürgermeister ist die erste Person der Sitzordnung und bleibt das an Tag 1, außer er stirbt.
+5. **Nacht.** Alle lebenden Namen stehen in einer Liste, ohne vorgegebene Reihenfolge. Die Person tippt den eigenen Namen, dann **Go**, dann die Fähigkeit oder **Ich will gar nichts machen**. Danach ist der Name grau und diese Nacht nicht mehr antippbar. Wer keine Fähigkeit hat, sieht denselben Ablauf. Sind alle grau, löst die Nacht auf.
+6. **Morgen.** Die App sagt, wer gestorben ist und wen die Schaufel zurückgeholt hat. Danach Tag 1, dann Nacht 2, und so weiter.
 7. **Ende.** Alle Rollen liegen offen. Das Home-Symbol öffnet die Lobby, die Namen bleiben stehen.
 
 Ein laufendes Spiel, inklusive Bildschirm und wer gerade dran ist, wird bei jeder Aktion gespeichert. Nach einem Absturz landet der nächste Start wieder an derselben Stelle.
@@ -41,8 +41,8 @@ Anzeigenamen stehen nur in `ROLE_NAMES` in `game.js`.
 | Rolle | Lager | Fähigkeit |
 | --- | --- | --- |
 | Werwolf | Wölfe | Nachts wählt das Rudel gemeinsam ein Haus. |
-| Dorfbewohner | Dorf | Keine. Sieht nachts denselben Schlafscreen wie jemand ohne Aktion. |
-| Hexe | Dorf | Ein Heiltrank und ein Gifttrank für das ganze Spiel. Sie erfährt das Opferhaus der Wölfe, bevor sie sich entscheidet. |
+| Dorfbewohner | Dorf | Keine. Tippt nachts den eigenen Namen und dann „Ich will gar nichts machen“. |
+| Hexe | Dorf | Heiltränke für das ganze Spiel, Anzahl in der Einrichtung (1 bis 8, Standard 2), plus ein Gifttrank. Sie sieht das Opfer nicht. |
 | Seherin | Dorf | Sieht nachts die Rolle einer **Person**. |
 | Amor | Dorf | Nur in Nacht 1, verbindet zwei **Personen**. |
 | Jäger | Dorf | Schießt, wenn er stirbt, auf eine **Person**. |
@@ -59,7 +59,7 @@ Mehr als eine Karte derselben Rolle ist erlaubt, solange die Prüfung unten pass
 
 Die Aktion kann übersprungen werden, der Screen bietet das ausdrücklich an. Klappt der Diebstahl, bekommt er diese Rolle ab der **nächsten** Nacht, voll aufgeladen (eine bestohlene Hexe hat neue Tränke, auch wenn die alte sie verbraucht hat). Die bestohlene Person wird Dorfbewohner. Ein bestohlener Werwolf wechselt das Lager, der Beraubte ist Dorf. Ein bestohlener Amor hat danach keine Aktion mehr, weil Amor nur in Nacht 1 handelt. Liebe bleibt bei der bestohlenen Person. Das Bürgermeisteramt wandert davon nicht.
 
-Die bestohlene Person erfährt es auf ihrem nächsten eigenen privaten Zug: noch in derselben Nacht, wenn sie in der Runde nach dem Waschbär kommt, sonst in der nächsten Nacht. Steht in dieser Nacht noch ihre alte Aktion an, darf sie die noch ausführen. Andere sehen keinen Extra-Screen, an dem man den Diebstahl erkennen könnte.
+Die bestohlene Person erfährt es auf ihrem nächsten eigenen privaten Zug: noch in derselben Nacht, wenn sie ihren Namen noch nicht abgehakt hat, sonst in der nächsten Nacht. Steht in dieser Nacht noch ihre alte Aktion an, darf sie die noch ausführen. Andere sehen keinen Extra-Screen, an dem man den Diebstahl erkennen könnte.
 
 Ist in dem Haus niemand (die Nutte ist nachts nie daheim), passiert nichts und der eine Einsatz bleibt erhalten.
 
@@ -70,7 +70,7 @@ Sie sucht eine lebende **Person** als Vorlage (Personen-Symbol) und muss die Kop
 - Werwolf: ein zusätzliches Haus töten
 - Jäger: nachts ein Haus erschießen
 - Seherin: eine Person ansehen
-- Hexe: Heil- und Gifttrank, beide frisch, in Runde 2
+- Hexe: die eingestellte Zahl Heiltränke, frisch, plus ein Gifttrank, sofort in dieser Nacht und ohne das Opfer zu sehen
 - Amor: ein weiteres Paar, auch nach Nacht 1
 - Waschbär: muss stehlen, mit den normalen Folgen ab der nächsten Nacht
 - Nutte: schläft in dieser Nacht ebenfalls außer Haus
@@ -104,37 +104,27 @@ Ausnahmen, auch als Kopie der Nachahmerin: **Seherin** und **Amor** zielen nacht
 
 Ein nächtlicher Treffer auf ein Haus erwischt alle, die gerade darin sind: die Besitzerin, wenn sie daheim ist, plus jede Nutte (oder nachgeahmte Nutte), die dort schläft. Die echte Nutte ist nie daheim. Ein Treffer auf ihr eigenes Haus tut ihr nichts. Ein Treffer auf das Haus, in dem sie schläft, tötet sie und den Gastgeber, falls der daheim ist.
 
-Der Heiltrank hebt **Werwolf-Angriffe** auf dieses Haus auf, Rudel und kopierten Werwolf, und rettet damit alle darin. Gift und ein nächtlicher Schuss bleiben. Die Hexe erfährt die angegriffenen Häuser, nicht wer darin schläft, und kann das eigene Haus heilen. Vergiften kann sie ein anderes Haus.
+Ein Heiltrank schützt ein Haus für **diese Nacht** vor jedem Tod darin: Werwolf-Angriff, kopierter Werwolf, Gift und nächtlicher Schuss. Alle, die in dem Haus sind, bleiben am Leben. Das eigene Haus darf sie heilen, vergiften darf sie es nicht. Sie erfährt nicht, welches Haus angegriffen wird, und legt den Trank blind. Mehrere Tränke in derselben Nacht sind erlaubt, jeder auf ein anderes Haus. Übrige Tränke bleiben für spätere Nächte. Die Nacht wird erst aufgelöst, wenn alle lebenden Personen fertig sind, deshalb ist die Reihenfolge egal.
 
 Amor und die Seherin treffen Personen, auch die Nutte. Der Waschbär trifft das Haus. Ist die Besitzerin nicht daheim, gelingt der Diebstahl nicht.
 
-## Nachtordnung
+## Nacht
 
-Runde 1, Sitzordnung, nur Lebende. Jede Person sieht nur den eigenen Screen, davor die Übergabe.
+Alle Lebenden stehen in einer Liste. Die Person tippt den eigenen Namen und **Go**. Danach nur der eigene Screen: Fähigkeit, oder **Ich will gar nichts machen**. Die Nutte muss ein Haus wählen. Wer fertig ist, ist grau und nicht mehr antippbar. Liebe und ein Diebstahlshinweis erscheinen auf diesem privaten Screen, wenn sie fällig sind.
 
-1. Nutte wählt ein Haus, falls sie es ist.
-2. Nachahmerin darf kopieren und, außer bei der Hexe, sofort handeln.
-3. Waschbär darf stehlen oder überspringen.
-4. Seherin sieht eine Person.
-5. Amor verbindet in Nacht 1 zwei Personen.
-6. Werwölfe wählen ein Haus und sehen die anderen Wölfe samt bisheriger Wahl.
-7. Schaufel darf eine tote Person wählen oder überspringen.
-8. Alle anderen, auch die Hexe, schlafen nur.
+Die Hexe darf in diesem Zug so viele Heiltränke legen, wie sie noch hat, jedes Haus einmal, und danach den Gifttrank. Beides kann sie lassen. Eine nachgeahmte Hexe bekommt die eingestellte Zahl Heiltränke frisch für diese Nacht, plus einen Gifttrank.
 
-Danach steht das Opferhaus fest: die meisten Stimmen. Bei Gleichstand das Haus mit dem kleinsten Abstand im Uhrzeigersinn vom Bürgermeister, sein eigenes Haus zählt als Abstand 0.
-
-Runde 2, wieder alle Lebenden: Hexe und eine Hexe-Kopie setzen Heilung und Gift. Wer neue Liebe noch nicht gesehen hat, sieht Partner und Rollen. Alle anderen schlafen, damit die Hexe nicht an der Übergabe zu erkennen ist. Ohne Werwolf-Angriff kann der Heiltrank nicht gelegt werden und bleibt liegen.
+Sind alle Namen grau, steht das Wolfsopfer fest: die meisten Stimmen. Bei Gleichstand das Haus mit dem kleinsten Abstand im Uhrzeigersinn vom Bürgermeister, sein eigenes Haus zählt als Abstand 0. Wölfe, die nichts tun, geben keine Stimme ab.
 
 Auflösung, in dieser Reihenfolge:
 
-1. Werwolf-Angriffe auf geheilte Häuser verpuffen. Sonst sterben alle im Haus.
-2. Gift und nächtliche Schüsse töten alle im Haus. Heilung stoppt sie nicht. Leere Häuser tun nichts.
-3. Liebesketten sterben mit. Liebe endet damit.
-4. Jäger, die diese Nacht gestorben sind, schießen der Reihe nach auf Personen.
-5. Die Schaufel macht ihre Toten wieder lebendig.
-6. Das Bürgermeisteramt wandert einen lebenden Sitz im Uhrzeigersinn.
-7. Sieg prüfen.
-8. Morgenansage.
+1. Jeder Tod in einem geheilten Haus verpufft, egal ob Wölfe, Gift oder nächtlicher Schuss. Sonst sterben alle im Haus. Leere Häuser tun nichts.
+2. Liebesketten sterben mit. Liebe endet damit.
+3. Jäger, die diese Nacht gestorben sind, schießen der Reihe nach auf Personen.
+4. Die Schaufel macht ihre Toten wieder lebendig.
+5. Stirbt der Bürgermeister, ist das Amt schon beim Tod weitergegangen. Zusätzlich wandert es am Ende von Nacht 2 und jeder späteren Nacht einen lebenden Sitz im Uhrzeigersinn. Nach Nacht 1 gibt es diese Extra-Drehung nicht.
+6. Sieg prüfen.
+7. Morgenansage. Nach Nacht 1 ist das Tag 1.
 
 ## Liebe
 
@@ -153,9 +143,9 @@ An Tag 1 ist es die erste eingegebene Person. Die Stimme zählt **1,5**. Ein Wer
 Zwei Weitergaben:
 
 - Stirbt der Bürgermeister, geht das Amt sofort an den nächsten lebenden Sitz im Uhrzeigersinn.
-- Am Ende **jeder** Nacht wandert es danach noch einmal einen lebenden Sitz weiter, Tote werden übersprungen. Zurückgeholte Personen zählen dabei wieder mit.
+- Am Ende von **Nacht 2** und jeder späteren Nacht wandert es danach noch einmal einen lebenden Sitz weiter, Tote werden übersprungen. Nach Nacht 1 bleibt es liegen, außer der Bürgermeister ist gestorben. Zurückgeholte Personen zählen bei der Drehung wieder mit.
 
-Beispiel: A ist Bürgermeister, Sitze A B C D. Stirbt A in der Nacht, wird zuerst B Bürgermeister und durch die nächtliche Drehung danach C. Überlebt A, wird nur B Bürgermeister. Stirbt B und die Schaufel holt B zurück, bevor das Amt dreht, kann B die Drehung wieder abbekommen. Die Todes-Weitergabe passiert noch vor der Wiederbelebung.
+Beispiel ab Nacht 2: A ist Bürgermeister, Sitze A B C D. Stirbt A in der Nacht, wird zuerst B Bürgermeister und durch die nächtliche Drehung danach C. Überlebt A, wird nur B Bürgermeister. In Nacht 1 entfällt die zweite Drehung: stirbt A, ist an Tag 1 nur B Bürgermeister; überlebt A, bleibt A. Stirbt B und die Schaufel holt B zurück, bevor das Amt dreht, kann B die Drehung wieder abbekommen. Die Todes-Weitergabe passiert noch vor der Wiederbelebung.
 
 ## Abstimmung und Gleichstand
 
@@ -187,7 +177,12 @@ Die erste spielbare Fassung ist auf Branch `roh` eingefroren (Commit `eefdb97c`,
 
 UX-Verbesserungen laufen weiter auf `main`. Später vergleichen wir die Oberfläche mit der Rohfassung, um zu lernen, wie klarere Bedienung von Anfang an aussehen sollte.
 
-Auf diesem Stand von `main` gibt es gegenüber `roh` noch keine neuen Abläufe.
+Gegenüber `roh`:
+
+- **Nacht.** Keine vorgegebene Reihenfolge und keine zweite Runde. Liste aller Lebenden, eigener Name, **Go**, Fähigkeit oder **Ich will gar nichts machen**. Danach grau und nicht mehr antippbar.
+- **Rollen.** Liste aller Namen. Nach dem Ansehen grau, aber weiter antippbar, bis **Spiel starten**.
+- **Ablauf.** Nacht 1 direkt nach dem Aufdecken, dann Morgen und Tag 1. Die erste Person ist an Tag 1 Bürgermeister. Die zusätzliche Drehung des Amts beginnt erst am Ende von Nacht 2. Das Duell bleibt am Tag.
+- **Hexe.** Sieht das Opfer nicht und legt Heiltränke blind. Die Anzahl ist einstellbar, 1 bis 8, Standard 2, für das ganze Spiel. In einer Nacht darf sie so viele legen, wie sie noch hat, jedes Haus nur einmal. Der Trank hält in dieser Nacht jeden Tod in dem Haus auf. Aufgelöst wird erst, wenn alle gehandelt haben.
 
 ## Aufbau
 
@@ -208,12 +203,12 @@ evryWerwolf/
 
 Diese Punkte waren so nicht wortwörtlich vorgegeben:
 
-- Tag 1 liegt **vor** Nacht 1, damit die erste Person an Tag 1 wirklich Bürgermeister ist und das Amt erst danach jede Nacht wandert.
-- Stirbt der Bürgermeister in einer Nacht, wandert das Amt zweimal: einmal wegen des Todes, einmal wegen der Nacht.
+- Nacht 1 liegt **vor** Tag 1. Die erste Person ist an Tag 1 Bürgermeister, weil das Amt nach Nacht 1 nicht zusätzlich wandert.
+- Ab Nacht 2 wandert das Amt am Morgen zusätzlich zur Weitergabe beim Tod.
 - Wolfs-Gleichstand: im Uhrzeigersinn ab dem Bürgermeister, Abstand 0 ist er selbst.
 - Abstimmungs-Gleichstand: niemand stirbt. Zusätzlich gibt es die Stimme „Niemand“.
-- Heiltrank stoppt nur Werwolf-Angriffe, nicht Gift und nicht den nächtlichen Schuss.
-- Die Hexe sieht das Haus, nicht die Gäste.
+- Heiltränke: 1 bis 8 pro Spiel, Standard 2, kein Nachtlimit außer der Restzahl. Jeder Trank ein anderes Haus, nur diese Nacht, gegen jeden Tod darin. Die Hexe sieht das Opfer nicht.
+- Die Hexe sieht nicht, wer in einem Haus schläft.
 - Ein echter Waschbär verliert seinen Einsatz nicht, wenn das Haus leer ist. Die Kopie der Nachahmerin hat den Einsatz dann schon verbraucht, kann aber ein anderes Haus versuchen. Gibt es gar kein bewohntes Haus, verpufft die Kopie.
 - Kopierte Nachahmerin: nur eine weitere Vorlage, dann Schluss.
 - Liebessieg für jede zusammenhängende Gruppe, die allein übrig ist, nicht nur für ein gemischtes Paar. Reine Wölfe als Paar gewinnen als Liebespaar, nicht als Rudel.

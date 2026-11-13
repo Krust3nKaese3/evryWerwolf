@@ -70,6 +70,8 @@ textarea { min-height: 120px; resize: vertical; }
   gap: 10px;
 }
 .choice.selected { border-color: #e6b15a; background: rgba(230, 177, 90, 0.16); }
+.choice.seen { opacity: 0.55; }
+.choice.done, .choice:disabled { opacity: 0.4; pointer-events: none; }
 .choice.dead, .player.dead { opacity: 0.45; }
 .choice .who, .player-name { font-size: 18px; font-weight: 800; }
 .choice .meta, .sub { display: block; color: #d9d0c0; font-size: 14px; font-weight: 600; margin-top: 2px; }

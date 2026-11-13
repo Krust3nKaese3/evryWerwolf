@@ -14,10 +14,11 @@ function test(name, fn) {
 
 function rngZero() { return 0; }
 
-function game(names, counts, nachUses) {
+function game(names, counts, nachUses, healPotions) {
   const state = W.createGame(names, counts || W.defaultCounts(names.length), {
     rng: rngZero,
-    nachUses: nachUses || 1
+    nachUses: nachUses || 1,
+    healPotions: healPotions == null ? 2 : healPotions
   });
   state._rng = rngZero;
   return state;
@@ -27,7 +28,7 @@ function setRoles(state, roles) {
   roles.forEach(function (role, i) {
     const p = state.players[i];
     p.role = role;
-    p.healLeft = role === 'hexe';
+    p.healsLeft = role === 'hexe' ? (state.healPotions || 2) : 0;
     p.poisonLeft = role === 'hexe';
     p.nachLeft = role === 'nachahmerin' ? state.nachUses : 0;
     p.stealUsed = false;
@@ -51,9 +52,25 @@ function ackWhile(state, pred) {
   }
 }
 
+function startNight(state) {
+  if (state.screen === 'reveal') W.send(state, { type: 'start-game' });
+  assert.strictEqual(state.screen, 'night');
+  assert.strictEqual(state.nightNumber, 1);
+}
+
 function toDiscuss(state) {
-  ackWhile(state, function (s) { return W.view(s).screen === 'reveal'; });
+  startNight(state);
+  playNight(state, function (view, s) {
+    if (view.prompt && view.prompt.kind === 'nutte') {
+      const host = W.living(s).filter(function (p) { return p.id !== view.playerId; })[0];
+      return { type: 'confirm', id: host.id };
+    }
+    return null;
+  });
+  if (state.screen === 'announce') W.send(state, { type: 'ack' });
   assert.strictEqual(state.screen, 'discuss');
+  assert.strictEqual(state.day, 1);
+  assert.strictEqual(state.mayorId, state.players[0].id);
 }
 
 function voteAll(state, choiceFor) {
@@ -195,24 +212,28 @@ function nightCounts() {
 test('Heiltrank rettet das Wolfsopfer im Haus, Gift nicht', function () {
   const healed = game(['Nutte', 'Wirt', 'Wolf', 'Hexe'], nightCounts(), 1);
   setRoles(healed, ['nutte', 'dorfbewohner', 'werwolf', 'hexe']);
-  toDiscuss(healed);
-  skipToNight(healed);
-  playNight(healed, function (view) {
+  startNight(healed);
+  let sawAttacks = false;
+  playNight(healed, function (view, s) {
     const kind = view.prompt && view.prompt.kind;
     if (kind === 'nutte') return { type: 'confirm', id: 2 };
     if (kind === 'wolf') return { type: 'confirm', id: 2 };
-    if (kind === 'heal') return { type: 'confirm', id: 2 };
+    if (kind === 'heal') {
+      if (view.prompt.attacks) sawAttacks = true;
+      if (s.heals.indexOf(2) >= 0) return { type: 'skip' };
+      return { type: 'confirm', id: 2 };
+    }
     if (kind === 'poison') return { type: 'skip' };
     return null;
   });
+  assert.strictEqual(sawAttacks, false);
   assert.strictEqual(W.playerById(healed, 1).alive, true);
   assert.strictEqual(W.playerById(healed, 2).alive, true);
-  assert.strictEqual(W.playerById(healed, 4).healLeft, false);
+  assert.strictEqual(W.playerById(healed, 4).healsLeft, 1);
 
   const poisoned = game(['Nutte', 'Wirt', 'Wolf', 'Hexe'], nightCounts(), 1);
   setRoles(poisoned, ['nutte', 'dorfbewohner', 'werwolf', 'hexe']);
-  toDiscuss(poisoned);
-  skipToNight(poisoned);
+  startNight(poisoned);
   playNight(poisoned, function (view) {
     const kind = view.prompt && view.prompt.kind;
     if (kind === 'nutte') return { type: 'confirm', id: 2 };
@@ -229,7 +250,7 @@ test('Heiltrank rettet das Wolfsopfer im Haus, Gift nicht', function () {
 test('Waschbär-Diebstahl wirkt erst in der nächsten Nacht, Liebe bleibt', function () {
   const state = game(['Wasch', 'Hexe', 'Wolf', 'Dorf']);
   setRoles(state, ['waschbaer', 'hexe', 'werwolf', 'dorfbewohner']);
-  W.playerById(state, 2).healLeft = false;
+  W.playerById(state, 2).healsLeft = 0;
   W.playerById(state, 2).poisonLeft = false;
   W.addLink(state, 2, 4);
   state.nightNumber = 1;
@@ -248,7 +269,7 @@ test('Waschbär-Diebstahl wirkt erst in der nächsten Nacht, Liebe bleibt', func
   W.beginNight(state);
   assert.strictEqual(state.nightNumber, 2);
   assert.strictEqual(W.playerById(state, 1).role, 'hexe');
-  assert.strictEqual(W.playerById(state, 1).healLeft, true);
+  assert.strictEqual(W.playerById(state, 1).healsLeft, 2);
   assert.strictEqual(W.playerById(state, 1).poisonLeft, true);
   assert.strictEqual(W.playerById(state, 2).role, 'dorfbewohner');
   assert.deepStrictEqual(W.playerById(state, 2).loverIds, [4]);
@@ -269,10 +290,9 @@ test('Nachtablauf: Diebstahl, Nutte, Hexe, Jäger, Schaufel, Bürgermeister', fu
   const state = game(names, counts6, 1);
   setRoles(state, ['waschbaer', 'nutte', 'werwolf', 'hexe', 'jaeger', 'dorfbewohner']);
   /* Anna stiehlt in Nacht 1 die Hexe. Bea schläft bei Fina. Chris frisst Finas Haus. Dora heilt nicht, vergiftet nicht. */
-  toDiscuss(state);
+  startNight(state);
   assert.strictEqual(state.mayorId, 1);
-  assert.strictEqual(state.day, 1);
-  skipToNight(state);
+  assert.strictEqual(state.day, 0);
   assert.strictEqual(state.nightNumber, 1);
   playNight(state, function (view, s) {
     const p = W.playerById(s, view.playerId);
@@ -291,18 +311,22 @@ test('Nachtablauf: Diebstahl, Nutte, Hexe, Jäger, Schaufel, Bürgermeister', fu
   assert.notStrictEqual(state.screen, 'hunter');
   assert.strictEqual(W.playerById(state, 1).role, 'waschbaer');
   assert.ok(state.pendingThefts.length === 1);
-  W.send(state, { type: 'ack' }); /* Morgen -> Diskussion Tag 2 */
+  W.send(state, { type: 'ack' }); /* Morgen -> Diskussion Tag 1, Amt bleibt */
   assert.strictEqual(state.screen, 'discuss');
-  assert.strictEqual(state.day, 2);
-  assert.notStrictEqual(state.mayorId, 1, 'Amt ist nach der Nacht weitergezogen');
+  assert.strictEqual(state.day, 1);
+  assert.strictEqual(state.mayorId, 1, 'Nach Nacht 1 dreht das Amt nicht');
   /* Bea ist tot, nächster lebender Sitz nach Anna: Chris (Bea tot). Tod von Bea war nicht der Bürgermeister. */
   skipToNight(state);
   assert.strictEqual(state.nightNumber, 2);
   assert.strictEqual(W.playerById(state, 1).role, 'hexe');
-  assert.strictEqual(W.playerById(state, 1).healLeft, true);
+  assert.strictEqual(W.playerById(state, 1).healsLeft, 2);
   assert.strictEqual(W.playerById(state, 1).poisonLeft, true);
   assert.strictEqual(W.playerById(state, 4).role, 'dorfbewohner');
-  assert.strictEqual(W.playerById(state, 4).healLeft, false);
+  assert.strictEqual(W.playerById(state, 4).healsLeft, 0);
+  playNight(state, function () { return null; });
+  W.send(state, { type: 'ack' });
+  assert.strictEqual(state.day, 2);
+  assert.notStrictEqual(state.mayorId, 1, 'Ab Nacht 2 dreht das Amt');
 });
 
 function playNight(state, decide) {
@@ -315,14 +339,22 @@ function playNight(state, decide) {
         const target = W.living(state)[0];
         W.send(state, { type: 'confirm', id: target.id });
       }
+    } else if (view.step === 'list') {
+      const next = W.living(state).filter(function (p) { return state.nightDone.indexOf(p.id) < 0; })[0];
+      if (!next) throw new Error('night list empty');
+      W.send(state, { type: 'night-pick', id: next.id });
+    } else if (view.step === 'ready') {
+      W.send(state, { type: 'go' });
     } else if (view.step === 'handoff') {
       W.send(state, { type: 'ack' });
     } else {
       const choice = decide(view, state);
       if (choice) W.send(state, choice);
-      else W.send(state, { type: 'ack' });
+      else if (view.prompt && ['sleep', 'love', 'notice', 'info', 'seer-result'].indexOf(view.prompt.kind) >= 0) {
+        W.send(state, { type: 'ack' });
+      } else W.send(state, { type: 'skip' });
     }
-    if (++guard > 200) throw new Error('night loop ' + JSON.stringify(view));
+    if (++guard > 300) throw new Error('night loop ' + JSON.stringify(W.view(state)));
   }
 }
 
@@ -333,8 +365,7 @@ test('Nachahmerin kopiert den Werwolf und tötet ein zweites Haus', function () 
   };
   const state = game(['Nana', 'Wolf', 'Dorf', 'Ziel'], counts, 1);
   setRoles(state, ['nachahmerin', 'werwolf', 'dorfbewohner', 'dorfbewohner']);
-  toDiscuss(state);
-  skipToNight(state);
+  startNight(state);
   playNight(state, function (view, s) {
     const kind = view.prompt && view.prompt.kind;
     if (kind === 'copy') return { type: 'confirm', id: 2 };
@@ -354,8 +385,7 @@ test('Seherin sieht die Nutte, Amor verbindet sie, Waschbär scheitert an ihrem 
   };
   const state = game(['See', 'Amor', 'Wasch', 'Nutte'], counts, 1);
   setRoles(state, ['seherin', 'amor', 'waschbaer', 'nutte']);
-  toDiscuss(state);
-  skipToNight(state);
+  startNight(state);
   let seenRole = null;
   playNight(state, function (view, s) {
     const kind = view.prompt && view.prompt.kind;
@@ -388,7 +418,7 @@ test('Schaufel holt mit verbrauchten Tränken zurück, ohne Liebe', function () 
   setRoles(state, ['werwolf', 'hexe', 'amor', 'schaufel', 'dorfbewohner']);
   toDiscuss(state);
   /* Tag 1: Hexe wird gewählt, Tränke waren schon leer, Amor hat sie verbunden — der Tod löst die Liebe. */
-  W.playerById(state, 2).healLeft = false;
+  W.playerById(state, 2).healsLeft = 0;
   W.playerById(state, 2).poisonLeft = false;
   W.addLink(state, 2, 5);
   voteAll(state, function (p) { return p.role === 'hexe' ? 5 : 2; });
@@ -418,7 +448,7 @@ test('Schaufel holt mit verbrauchten Tränken zurück, ohne Liebe', function () 
   });
   assert.strictEqual(W.playerById(state, 2).alive, true);
   assert.strictEqual(W.playerById(state, 2).role, 'hexe');
-  assert.strictEqual(W.playerById(state, 2).healLeft, false);
+  assert.strictEqual(W.playerById(state, 2).healsLeft, 0);
   assert.strictEqual(W.playerById(state, 2).poisonLeft, false);
   assert.deepStrictEqual(W.playerById(state, 2).loverIds, []);
 });
@@ -464,8 +494,7 @@ test('Jäger stirbt nachts und erschießt morgens eine Person', function () {
   };
   const state = game(['Wolf', 'Jäger', 'A', 'B'], counts, 1);
   setRoles(state, ['werwolf', 'jaeger', 'dorfbewohner', 'dorfbewohner']);
-  toDiscuss(state);
-  skipToNight(state);
+  startNight(state);
   playNight(state, function (view) {
     if (view.prompt && view.prompt.kind === 'wolf') return { type: 'confirm', id: 2 };
     return null;
@@ -495,6 +524,117 @@ test('Home behält die Namen und löscht die Rollen', function () {
   assert.strictEqual(state.players.length, 4);
   assert.strictEqual(state.players[0].name, 'A');
   assert.strictEqual(state.players[0].role, undefined);
+});
+
+test('Heiltränke sind 1 bis 8, Standard 2, mehrere Häuser in einer Nacht', function () {
+  const counts = W.defaultCounts(4);
+  assert.strictEqual(W.validateSetup(counts, 4, 1, 2), '');
+  assert.strictEqual(W.validateSetup(counts, 4, 1, 1), '');
+  assert.strictEqual(W.validateSetup(counts, 4, 1, 8), '');
+  assert.ok(W.validateSetup(counts, 4, 1, 0));
+  assert.ok(W.validateSetup(counts, 4, 1, 9));
+  const roles = {
+    werwolf: 1, dorfbewohner: 2, hexe: 1, seherin: 0, amor: 0, jaeger: 0,
+    waschbaer: 0, nachahmerin: 0, nutte: 0, russe: 0, politiker: 0, schaufel: 0
+  };
+  const state = game(['Wolf', 'A', 'B', 'Hexe'], roles, 1, 2);
+  setRoles(state, ['werwolf', 'dorfbewohner', 'dorfbewohner', 'hexe']);
+  assert.strictEqual(W.playerById(state, 4).healsLeft, 2);
+  startNight(state);
+  playNight(state, function (view, s) {
+    const kind = view.prompt && view.prompt.kind;
+    if (kind === 'wolf') return { type: 'confirm', id: 2 };
+    if (kind === 'heal') {
+      assert.strictEqual(view.prompt.attacks, undefined);
+      const house = s.heals.indexOf(2) < 0 ? 2 : 3;
+      return { type: 'confirm', id: house };
+    }
+    if (kind === 'poison') return { type: 'confirm', id: 3 };
+    return null;
+  });
+  assert.strictEqual(W.playerById(state, 2).alive, true, 'Wolf auf Haus 2 geheilt');
+  assert.strictEqual(W.playerById(state, 3).alive, true, 'Gift auf Haus 3 geheilt');
+  assert.strictEqual(W.playerById(state, 4).healsLeft, 0);
+  assert.strictEqual(W.playerById(state, 4).poisonLeft, false);
+
+  const once = game(['Wolf', 'A', 'B', 'Hexe'], roles, 1, 1);
+  setRoles(once, ['werwolf', 'dorfbewohner', 'dorfbewohner', 'hexe']);
+  assert.strictEqual(W.playerById(once, 4).healsLeft, 1);
+  startNight(once);
+  W.send(once, { type: 'night-pick', id: 4 });
+  W.send(once, { type: 'go' });
+  assert.strictEqual(W.view(once).prompt.kind, 'heal');
+  W.send(once, { type: 'confirm', id: 2 });
+  assert.strictEqual(W.view(once).prompt.kind, 'poison');
+  assert.strictEqual(W.playerById(once, 4).healsLeft, 0);
+});
+
+test('Heiltrank gilt nur diese Nacht und ein Haus nur einmal', function () {
+  const roles = {
+    werwolf: 1, dorfbewohner: 2, hexe: 1, seherin: 0, amor: 0, jaeger: 0,
+    waschbaer: 0, nachahmerin: 0, nutte: 0, russe: 0, politiker: 0, schaufel: 0
+  };
+  const state = game(['Wolf', 'A', 'B', 'Hexe'], roles, 1, 2);
+  setRoles(state, ['werwolf', 'dorfbewohner', 'dorfbewohner', 'hexe']);
+  startNight(state);
+  W.send(state, { type: 'night-pick', id: 4 });
+  W.send(state, { type: 'go' });
+  W.send(state, { type: 'confirm', id: 2 });
+  assert.strictEqual(W.view(state).prompt.kind, 'heal');
+  W.send(state, { type: 'confirm', id: 2 });
+  assert.ok(state.error);
+  assert.strictEqual(W.playerById(state, 4).healsLeft, 1);
+  W.send(state, { type: 'skip' });
+  W.send(state, { type: 'skip' });
+  W.send(state, { type: 'night-pick', id: 1 });
+  W.send(state, { type: 'go' });
+  W.send(state, { type: 'confirm', id: 2 });
+  const rest = W.living(state).filter(function (p) { return state.nightDone.indexOf(p.id) < 0; });
+  rest.forEach(function (p) {
+    if (state.screen !== 'night') return;
+    if (W.view(state).step === 'list') W.send(state, { type: 'night-pick', id: p.id });
+    if (W.view(state).step === 'ready') W.send(state, { type: 'go' });
+    while (state.screen === 'night' && W.view(state).playerId === p.id) {
+      const kind = W.view(state).prompt && W.view(state).prompt.kind;
+      W.send(state, { type: kind === 'sleep' || kind === 'info' ? 'ack' : 'skip' });
+    }
+  });
+  assert.strictEqual(W.playerById(state, 2).alive, true);
+  W.send(state, { type: 'ack' });
+  skipToNight(state);
+  playNight(state, function (view) {
+    if (view.prompt && view.prompt.kind === 'wolf') return { type: 'confirm', id: 2 };
+    if (view.prompt && view.prompt.kind === 'heal') return { type: 'skip' };
+    return null;
+  });
+  assert.strictEqual(W.playerById(state, 2).alive, false);
+});
+
+test('Namenliste: Rolle bleibt antippbar, Nachtname nicht', function () {
+  const state = game(['A', 'B', 'C', 'D']);
+  setRoles(state, ['dorfbewohner', 'dorfbewohner', 'dorfbewohner', 'werwolf']);
+  W.send(state, { type: 'reveal-pick', id: 1 });
+  assert.strictEqual(state.step, 'show');
+  W.send(state, { type: 'ack' });
+  assert.strictEqual(state.revealed[1], true);
+  W.send(state, { type: 'reveal-pick', id: 1 });
+  assert.strictEqual(state.step, 'show');
+  assert.strictEqual(W.view(state).playerId, 1);
+  W.send(state, { type: 'ack' });
+  W.send(state, { type: 'start-game' });
+  assert.strictEqual(state.screen, 'night');
+  assert.strictEqual(state.day, 0);
+  W.send(state, { type: 'night-pick', id: 2 });
+  assert.strictEqual(state.step, 'ready');
+  W.send(state, { type: 'back' });
+  assert.strictEqual(state.step, 'list');
+  W.send(state, { type: 'night-pick', id: 1 });
+  W.send(state, { type: 'go' });
+  W.send(state, { type: 'ack' });
+  assert.ok(state.nightDone.indexOf(1) >= 0);
+  W.send(state, { type: 'night-pick', id: 1 });
+  assert.ok(state.error);
+  assert.strictEqual(state.step, 'list');
 });
 
 console.log(passed + ' tests');

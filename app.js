@@ -140,7 +140,8 @@
     var text = {
       werwolf: 'Nachts wählt das Rudel gemeinsam ein Haus.',
       dorfbewohner: 'Du hast keine Sonderfähigkeit. Nachts schläfst du.',
-      hexe: 'Du hast einen Heiltrank und einen Gifttrank für das ganze Spiel.',
+      hexe: 'Du hast ' + (state.healPotions || (person && person.healsLeft) || 2) +
+        ' Heiltränke für das ganze Spiel, in einer Nacht auch mehrere, jedes Haus nur einmal. Dazu einen Gifttrank. Du siehst nicht, wer angegriffen wird.',
       seherin: 'Nachts siehst du die Rolle einer Person.',
       amor: 'Nur in der ersten Nacht verbindest du zwei Personen.',
       jaeger: 'Wenn du stirbst, schießt du auf eine Person.',
@@ -209,7 +210,8 @@
       '<li>Die Nutte ist nachts nie daheim. Ein Treffer auf ihr Haus verpufft, ein Treffer auf das Haus, in dem sie schläft, trifft sie und den Gastgeber.</li>' +
       '<li>Werwölfe: Mehrheit, bei Gleichstand das Haus im Uhrzeigersinn ab dem Bürgermeister.</li>' +
       '<li>Abstimmung: Bürgermeister zählt 1,5. Gleichstand heißt, niemand stirbt.</li>' +
-      '<li>Tag 1 startet vor der ersten Nacht. Danach wandert das Amt jede Nacht einen lebenden Sitz weiter und zusätzlich, wenn der Bürgermeister stirbt.</li>' +
+      '<li>Nach dem Aufdecken beginnt Nacht 1. Tag 1 folgt am Morgen. Das Amt dreht ab dem Ende von Nacht 2 jeden Morgen einen lebenden Sitz weiter und zusätzlich, wenn der Bürgermeister stirbt.</li>' +
+      '<li>Die Hexe hat ' + (state.healPotions || 2) + ' Heiltränke für das Spiel. Sie schützt Häuser, ohne das Opfer zu kennen. Ein Trank hält in dieser Nacht jeden Tod in dem Haus auf.</li>' +
       '</ul></details>';
   }
 
@@ -224,28 +226,43 @@
         '<button type="button" class="icon-btn" data-act="bump" data-role="' + role + '" data-dir="1" aria-label="' + esc(W.roleName(role)) + ' mehr">+</button>' +
         '</span></div>';
     }).join('');
-    var problem = W.validateSetup(state.counts, state.players.length, state.nachUses);
+    var problem = W.validateSetup(state.counts, state.players.length, state.nachUses, state.healPotions == null ? 2 : state.healPotions);
     return header('Rollen', state.players.length + ' Mitspieler') +
       '<div class="stack"><p class="lead">Vorschlag anpassen. Die Summe muss ' + state.players.length + ' sein. Belegt: ' + sum + '.</p>' +
       (problem ? '<div class="banner error">' + esc(problem) + '</div>' : '') +
       '<div class="card stack">' + rows +
       '<div class="stepper"><span class="role-name">Einsätze ' + esc(W.roleName('nachahmerin')) + '</span><span class="row" style="flex:0 0 auto;align-items:center">' +
       '<button type="button" class="icon-btn" data-act="nach" data-dir="-1" aria-label="weniger Einsätze">−</button><strong>' + state.nachUses + '</strong>' +
-      '<button type="button" class="icon-btn" data-act="nach" data-dir="1" aria-label="mehr Einsätze">+</button></span></div></div>' +
+      '<button type="button" class="icon-btn" data-act="nach" data-dir="1" aria-label="mehr Einsätze">+</button></span></div>' +
+      '<div class="stepper"><span class="role-name">Heiltränke ' + esc(W.roleName('hexe')) + '</span><span class="row" style="flex:0 0 auto;align-items:center">' +
+      '<button type="button" class="icon-btn" data-act="heals" data-dir="-1" aria-label="weniger Heiltränke">−</button><strong>' + (state.healPotions || 2) + '</strong>' +
+      '<button type="button" class="icon-btn" data-act="heals" data-dir="1" aria-label="mehr Heiltränke">+</button></span></div></div>' +
       '<button type="button" class="btn secondary" data-act="suggest">Vorschlag</button>' +
       '<button type="button" class="btn" data-act="deal"' + (problem ? ' disabled' : '') + '>Rollen verteilen</button>' +
       '<button type="button" class="btn secondary" data-act="back-lobby">Zurück zu den Namen</button></div>';
   }
 
   function renderReveal() {
-    var person = player(state.order[state.cursor]);
-    if (!person) return header('Rollen', 'Werwolf');
-    if (state.step !== 'show') return handoff(person.name, 'Rolle noch verdeckt.');
-    return header('Deine Rolle', person.name) +
-      '<section class="stage card"><p class="eyebrow">Nur für ' + esc(person.name) + '</p>' +
-      '<p class="big-role">' + esc(W.roleName(person.role)) + '</p>' +
-      '<p class="lead">' + esc(blurb(person.role, person)) + '</p>' +
-      '<button type="button" class="btn" data-act="ack">Verstanden, verdecken</button></section>';
+    if (state.step === 'show') {
+      var person = player(state.activeId);
+      if (!person) return header('Rollen', 'Werwolf');
+      return header('Deine Rolle', person.name) +
+        '<section class="stage card"><p class="eyebrow">Nur für ' + esc(person.name) + '</p>' +
+        '<p class="big-role">' + esc(W.roleName(person.role)) + '</p>' +
+        '<p class="lead">' + esc(blurb(person.role, person)) + '</p>' +
+        '<button type="button" class="btn" data-act="ack">Verstanden, verdecken</button></section>';
+    }
+    var names = state.players.map(function (p) {
+      var seen = state.revealed && state.revealed[p.id];
+      return '<button type="button" class="choice' + (seen ? ' seen' : '') + '" data-act="reveal-pick" data-id="' + p.id + '">' +
+        '<span><span class="who">' + esc(p.name) + '</span>' +
+        (seen ? '<span class="meta">Rolle schon gesehen, noch mal möglich</span>' : '<span class="meta">Rolle ansehen</span>') +
+        '</span></button>';
+    }).join('');
+    return header('Rollen', 'Wer ist dran?') +
+      '<div class="stack"><p class="lead">Jede Person tippt den eigenen Namen und sieht nur die eigene Rolle. Danach ist der Name grau, bleibt aber antippbar, bis das Spiel startet.</p>' +
+      '<div class="stack">' + names + '</div>' +
+      '<button type="button" class="btn" data-act="start-game">Spiel starten</button></div>';
   }
 
   function renderDiscuss() {
@@ -274,7 +291,9 @@
   }
 
   function renderTurn() {
-    var person = player(state.order[state.cursor]);
+    if (state.screen === 'night' && state.step === 'list') return renderNightList();
+    if (state.screen === 'night' && state.step === 'ready') return renderNightReady();
+    var person = state.screen === 'night' ? player(state.activeId) : player(state.order[state.cursor]);
     if (!person) return header('Werwolf', 'Weiter');
     if (state.step !== 'show') return handoff(person.name);
     var prompt = W.view(state).prompt;
@@ -282,10 +301,33 @@
     return header(phaseEyebrow(), person.name) + '<div class="stack">' + errorHtml() + promptHtml(person, prompt) + '</div>';
   }
 
+  function renderNightList() {
+    var done = state.nightDone || [];
+    var names = W.living(state).map(function (p) {
+      var finished = done.indexOf(p.id) >= 0;
+      return '<button type="button" class="choice' + (finished ? ' done' : '') + '" data-act="night-pick" data-id="' + p.id + '"' +
+        (finished ? ' disabled' : '') + '><span><span class="who">' + esc(p.name) + '</span>' +
+        '<span class="meta">' + (finished ? 'schon dran' : 'tippen, wenn du dran bist') + '</span></span></button>';
+    }).join('');
+    return header(phaseEyebrow(), 'Wer ist wach?') +
+      '<div class="stack">' + errorHtml() +
+      '<p class="lead">Jede lebende Person tippt den eigenen Namen. Die Reihenfolge ist egal. Wer fertig ist, wird grau und kann diese Nacht nicht noch einmal.</p>' +
+      '<div class="stack">' + names + '</div>' + abortLink() + '</div>';
+  }
+
+  function renderNightReady() {
+    var person = player(state.activeId);
+    var name = person ? person.name : '';
+    return header(phaseEyebrow(), name) +
+      '<section class="stage"><p class="lead">Nur ' + esc(name) + ' schaut jetzt hin.</p>' +
+      '<button type="button" class="btn" data-act="go">Go</button>' +
+      '<button type="button" class="btn secondary" data-act="back">Zurück zur Liste</button></section>';
+  }
+
   function promptHtml(person, prompt) {
     if (prompt.kind === 'sleep') {
       return '<section class="stage"><p class="lead">Du schläfst. Für dich gibt es nichts zu tun.</p>' +
-        '<button type="button" class="btn" data-act="ack">Weiter</button></section>';
+        '<button type="button" class="btn" data-act="ack">Ich will gar nichts machen</button></section>';
     }
     if (prompt.kind === 'notice') {
       var text = person.role === 'dorfbewohner'
@@ -321,12 +363,7 @@
     var kind = prompt.target === 'house' ? 'house' : 'person';
     var intro = intros(person, prompt);
     var list = '';
-    if (prompt.kind === 'heal') {
-      list = (prompt.attacks || []).map(function (id) {
-        var owner = player(id);
-        return choiceButton(id, 'Haus von ' + (owner ? owner.name : id), 'Werwolf-Angriff', 'house');
-      }).join('');
-    } else if (prompt.kind === 'vote') {
+    if (prompt.kind === 'vote') {
       list = W.targetsFor(state, prompt, person.id).map(function (p) {
         return choiceButton(p.id, p.name, p.id === state.mayorId ? 'Bürgermeister' : '', 'person');
       }).join('') + choiceButton(0, 'Niemand', 'niemand lynchen', 'person');
@@ -347,8 +384,12 @@
       W.wolfBoard(state, person.id).map(function (wolf) {
         return '<p><strong>' + esc(wolf.name) + '</strong> · ' + esc(wolf.choice) + '</p>';
       }).join('') + '</div>' : '';
-    var skip = prompt.forced ? '' : (prompt.kind === 'steal' || prompt.kind === 'copy' || prompt.kind === 'heal' || prompt.kind === 'poison' || prompt.kind === 'schaufel'
-      ? '<button type="button" class="btn secondary" data-act="skip">Überspringen</button>' : '');
+    var skipLabel = 'Ich will gar nichts machen';
+    if (prompt.kind === 'heal') skipLabel = (state.heals || []).length ? 'Keine weiteren Heiltränke' : 'Keinen Heiltrank';
+    if (prompt.kind === 'poison') skipLabel = 'Kein Gift';
+    var canSkip = !prompt.forced && (prompt.kind === 'steal' || prompt.kind === 'copy' || prompt.kind === 'heal' ||
+      prompt.kind === 'poison' || prompt.kind === 'schaufel' || prompt.kind === 'wolf' || prompt.kind === 'seer' || prompt.kind === 'amor');
+    var skip = canSkip ? '<button type="button" class="btn secondary" data-act="skip">' + skipLabel + '</button>' : '';
     var confirmLabel = prompt.kind === 'vote' ? 'Stimme abgeben' : (prompt.kind === 'nutte' ? 'Hier schlafen' : 'Fertig');
     return intro + wolves + '<div class="stack">' + list + '</div>' +
       '<button type="button" class="btn" data-act="confirm">' + confirmLabel + '</button>' + skip;
@@ -363,8 +404,9 @@
       seer: 'Wessen Rolle willst du sehen?',
       amor: 'Wähle zwei Personen. Sie erfahren Partner und Rollen.',
       copy: 'Wen ahmst du nach? Die Fähigkeit ist frisch und muss in dieser Nacht eingesetzt werden.',
-      heal: 'Die Werwölfe haben diese Häuser gewählt. Der Heiltrank rettet alle Werwolf-Angriffe auf ein Haus, nicht Gift und nicht einen Schuss.',
-      poison: 'Welches andere Haus vergiftest du? Alle, die darin sind, sterben.',
+      heal: 'Du darfst ein Haus schützen, ohne zu wissen, wer angegriffen wird. Der Trank gilt nur diese Nacht und hält jeden Tod in diesem Haus auf: Wölfe, Gift und nächtliche Schüsse. Jedes Haus nur einmal. Noch ' +
+        (prompt.healsLeft || 0) + ' Heiltrank' + ((prompt.healsLeft || 0) === 1 ? '' : 'e') + '.',
+      poison: 'Welches andere Haus vergiftest du? Alle, die darin sind, sterben, außer ein Heiltrank schützt das Haus in dieser Nacht.',
       kill: prompt.attack === 'wolf'
         ? 'Zusätzlicher Werwolf-Angriff: wähle ein Haus.'
         : 'Nächtlicher Schuss: wähle ein Haus. Alle darin sterben.',
@@ -494,13 +536,21 @@
       act({ type: 'set-nach', value: next });
       return;
     }
+    if (type === 'heals') {
+      var heals = (state.healPotions == null ? 2 : state.healPotions) + Number(el.getAttribute('data-dir'));
+      if (heals < 1) heals = 1;
+      if (heals > 8) heals = 8;
+      act({ type: 'set-heals', value: heals });
+      return;
+    }
     if (type === 'confirm') {
       var ids = (state.selection || []).slice();
       act({ type: 'confirm', id: ids.length ? ids[0] : undefined, ids: ids });
       return;
     }
-    if (type === 'select' || type === 'remove-name') {
-      act({ type: type === 'select' ? 'select' : 'remove-name', id: Number(el.getAttribute('data-id')) });
+    if (type === 'select' || type === 'remove-name' || type === 'night-pick' || type === 'reveal-pick') {
+      var actType = type === 'select' ? 'select' : type;
+      act({ type: actType, id: Number(el.getAttribute('data-id')) });
       return;
     }
     act({ type: type });
