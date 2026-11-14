@@ -249,8 +249,7 @@ function play(state, limit) {
       if (state.winner === 'dorf') assert.ok(!alive.some(function (person) { return person.role === 'werwolf'; }));
       if (state.winner === 'woelfe') {
         const wolves = alive.filter(function (person) { return person.role === 'werwolf'; }).length;
-        const village = alive.filter(function (person) { return W.teamOfRole(person.role) === 'village'; }).length;
-        assert.ok(wolves >= village);
+        assert.ok(wolves >= alive.length - wolves);
       }
     }
     const mark = state.screen + ':' + state.step + ':' + state.nightNumber + ':' + (state.nightDone || []).length + ':' + (state.promptIndex || 0);
@@ -1157,6 +1156,24 @@ test('Zurück nach dem Namen verbraucht nichts und macht den Namen nicht grau', 
   assert.strictEqual(duel.duel.stage, 'who');
   assert.strictEqual(p(duel, 1).russeUsed, false);
   assert.strictEqual(duel.screen, 'duel');
+});
+
+test('Ein lebender Politiker zählt gegen den Wolfsieg, das Dorf gewinnt ohne Wölfe trotzdem', function () {
+  const even = make(['werwolf', 'werwolf', 'dorfbewohner', 'dorfbewohner', 'politiker']);
+  assert.strictEqual(W.checkWin(even), null);
+  assert.strictEqual(even.winner, null);
+  const tight = make(['werwolf', 'schaufel', 'politiker', 'dorfbewohner']);
+  p(tight, 4).alive = false;
+  tight.winner = null;
+  assert.strictEqual(W.checkWin(tight), null);
+  assert.strictEqual(p(tight, 1).role, 'werwolf');
+  assert.strictEqual(p(tight, 2).role, 'schaufel');
+  assert.strictEqual(p(tight, 3).role, 'politiker');
+  const village = make(['dorfbewohner', 'politiker', 'werwolf', 'dorfbewohner']);
+  p(village, 3).alive = false;
+  village.winner = null;
+  assert.strictEqual(W.checkWin(village), 'dorf');
+  assert.strictEqual(village.winReason, 'Kein Werwolf lebt mehr.');
 });
 
 console.log(passed + ' Regeltests');
