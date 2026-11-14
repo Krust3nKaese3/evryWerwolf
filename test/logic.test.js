@@ -213,8 +213,22 @@ test('Stimme 1,5 und Gleichstand ohne Lynch', function () {
   assert.strictEqual(W.resolveBallot(state).type, 'none');
 });
 
-test('Nutte ist nachts nie daheim, Gäste sterben mit', function () {
-  const state = game(['Nutte', 'Wirt', 'Wolf', 'Hexe']);
+test('Gespeicherte Rolle nutte heißt Gastgeberin', function () {
+  assert.strictEqual(W.roleName('nutte'), 'Gastgeberin');
+  const state = game(['Anna', 'Bea', 'Chris', 'Dora'], {
+    werwolf: 1, dorfbewohner: 1, hexe: 0, seherin: 1, amor: 0, jaeger: 0,
+    waschbaer: 0, nachahmerin: 0, nutte: 1, russe: 0, politiker: 0, schaufel: 0
+  }, 1);
+  setRoles(state, ['seherin', 'nutte', 'dorfbewohner', 'werwolf']);
+  state.seerExact = true;
+  const verdict = W.seerVerdict(state, W.playerById(state, 2));
+  assert.strictEqual(verdict.label, 'Gastgeberin');
+  W.send(state, { type: 'set-count', role: 'nutte', value: 1 });
+  assert.strictEqual(state.counts.nutte, 1);
+});
+
+test('Gastgeberin ist nachts nie daheim, Gäste sterben mit', function () {
+  const state = game(['Gast', 'Wirt', 'Wolf', 'Hexe']);
   setRoles(state, ['nutte', 'dorfbewohner', 'werwolf', 'hexe']);
   state.hosts = { 1: 2 };
   assert.strictEqual(W.isAway(state, 1), true);
@@ -233,7 +247,7 @@ function nightCounts() {
 }
 
 test('Heiltrank rettet das Wolfsopfer im Haus, Gift nicht', function () {
-  const healed = game(['Nutte', 'Wirt', 'Wolf', 'Hexe'], nightCounts(), 1);
+  const healed = game(['Gast', 'Wirt', 'Wolf', 'Hexe'], nightCounts(), 1);
   setRoles(healed, ['nutte', 'dorfbewohner', 'werwolf', 'hexe']);
   startNight(healed);
   let sawAttacks = false;
@@ -254,7 +268,7 @@ test('Heiltrank rettet das Wolfsopfer im Haus, Gift nicht', function () {
   assert.strictEqual(W.playerById(healed, 2).alive, true);
   assert.strictEqual(W.playerById(healed, 4).healsLeft, 1);
 
-  const poisoned = game(['Nutte', 'Wirt', 'Wolf', 'Hexe'], nightCounts(), 1);
+  const poisoned = game(['Gast', 'Wirt', 'Wolf', 'Hexe'], nightCounts(), 1);
   setRoles(poisoned, ['nutte', 'dorfbewohner', 'werwolf', 'hexe']);
   startNight(poisoned);
   playNight(poisoned, function (view) {
@@ -298,7 +312,7 @@ test('Waschbär-Diebstahl wirkt erst in der nächsten Nacht, Liebe bleibt', func
   assert.deepStrictEqual(W.playerById(state, 2).loverIds, [4]);
 });
 
-test('Nachtablauf: Diebstahl, Nutte, Hexe, Jäger, Schaufel, Bürgermeister', function () {
+test('Nachtablauf: Diebstahl, Gastgeberin, Hexe, Jäger, Schaufel, Bürgermeister', function () {
   const names = ['Anna', 'Bea', 'Chris', 'Dora', 'Erik', 'Fina'];
   const counts = W.blank ? null : {
     werwolf: 1, dorfbewohner: 1, hexe: 1, seherin: 0, amor: 0, jaeger: 1,
@@ -327,7 +341,7 @@ test('Nachtablauf: Diebstahl, Nutte, Hexe, Jäger, Schaufel, Bürgermeister', fu
     if (kind === 'poison') return { type: 'skip' };
     return null;
   });
-  assert.strictEqual(W.playerById(state, 2).alive, false, 'Nutte stirbt im Haus');
+  assert.strictEqual(W.playerById(state, 2).alive, false, 'Gastgeberin stirbt im Haus');
   assert.strictEqual(W.playerById(state, 6).alive, false, 'Wirt stirbt');
   assert.strictEqual(W.playerById(state, 5).role, 'jaeger');
   /* Jäger lebt noch. Kein Schuss. */
@@ -407,12 +421,12 @@ test('Nachahmerin kopiert den Werwolf und tötet ein zweites Haus', function () 
   assert.strictEqual(W.playerById(state, 1).nachLeft, 0);
 });
 
-test('Seherin sieht das Lager der Nutte, Amor verbindet sie, Waschbär stiehlt die Person', function () {
+test('Seherin sieht das Lager der Gastgeberin, Amor verbindet sie, Waschbär stiehlt die Person', function () {
   const counts = {
     werwolf: 1, dorfbewohner: 0, hexe: 0, seherin: 1, amor: 1, jaeger: 0,
     waschbaer: 0, nachahmerin: 0, nutte: 1, russe: 0, politiker: 0, schaufel: 0
   };
-  const state = game(['See', 'Amor', 'Wasch', 'Nutte'], counts, 1);
+  const state = game(['See', 'Amor', 'Wasch', 'Gast'], counts, 1);
   setRoles(state, ['seherin', 'amor', 'waschbaer', 'nutte']);
   startNight(state, { 2: [4, 1] });
   let seenRole = null;

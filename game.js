@@ -11,7 +11,7 @@
     jaeger: 'Jäger',
     waschbaer: 'Waschbär',
     nachahmerin: 'Nachahmerin',
-    nutte: 'Nutte',
+    nutte: 'Gastgeberin',
     russe: 'Russe',
     politiker: 'Politiker',
     schaufel: 'Schaufel'

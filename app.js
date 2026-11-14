@@ -323,7 +323,7 @@
   function rulesHtml() {
     return '<details class="card"><summary>Kurze Regeln</summary>' +
       '<ul><li>Nachtfähigkeiten zielen auf Häuser, außer Seherin, Amor, Waschbär und die Schaufel (Personen). Tagsüber gilt immer die Person.</li>' +
-      '<li>Die Nutte ist nachts nie daheim. Ein Treffer auf ihr Haus verpufft, ein Treffer auf das Haus, in dem sie schläft, trifft sie und den Gastgeber.</li>' +
+      '<li>Die Gastgeberin ist nachts nie daheim. Ein Treffer auf ihr Haus verpufft, ein Treffer auf das Haus, in dem sie schläft, trifft sie und den Gastgeber.</li>' +
       '<li>Werwölfe: Mehrheit, bei Gleichstand das Haus im Uhrzeigersinn ab dem Bürgermeister.</li>' +
       '<li>Abstimmung: Bürgermeister zählt 1,5. Gleichstand heißt, niemand stirbt.</li>' +
       '<li>Nach dem Aufdecken beginnt Nacht 1. Tag 1 folgt am Morgen. Das Amt dreht ab dem Ende von Nacht 2 jeden Morgen einen lebenden Sitz weiter und zusätzlich, wenn der Bürgermeister stirbt.</li>' +
@@ -631,7 +631,7 @@ if (!(poolOn && role === 'werwolf')) sum += count;
       vote: 'Wen wählst du? Der Bürgermeister zählt 1,5. Bei Gleichstand stirbt niemand.',
       wolf: 'Das Rudel wählt ein Haus. Du siehst, was die anderen Werwölfe schon gewählt haben.',
       nutte: 'In wessen Haus schläfst du diese Nacht? Dein eigenes Haus bleibt leer.',
-      steal: 'Wessen Rolle stiehlst du? Hat die Person heute noch nicht gehandelt, gilt der Diebstahl sofort und du spielst die neue Fähigkeit noch in dieser Nacht. Sonst ab der nächsten Nacht. Das Haus der Nutte spielt keine Rolle.',
+      steal: 'Wessen Rolle stiehlst du? Hat die Person heute noch nicht gehandelt, gilt der Diebstahl sofort und du spielst die neue Fähigkeit noch in dieser Nacht. Sonst ab der nächsten Nacht. Das Haus der Gastgeberin spielt keine Rolle.',
       seer: 'Wessen Rolle willst du sehen?',
       amor: 'Wähle zwei Personen. Du selbst darfst dabei sein. Aussetzen geht nicht. Wer heute schon dran war, erfährt die Liebe erst in der nächsten Nacht.',
       copy: 'Wen ahmst du nach? Die Fähigkeit ist frisch und muss in dieser Nacht eingesetzt werden.',
@@ -646,7 +646,7 @@ if (!(poolOn && role === 'werwolf')) sum += count;
     var marks = {
       vote: hero('🗳️', 'Abstimmung'),
       wolf: hero('🩸', 'Wolfsangriff'),
-      nutte: hero('💋', 'Nutte'),
+      nutte: hero('💋', 'Gastgeberin'),
       steal: hero('🦝', 'Diebstahl'),
       seer: hero('👁️', 'Seherin'),
       amor: hero('💘', 'Amor'),

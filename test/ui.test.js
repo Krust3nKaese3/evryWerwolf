@@ -219,6 +219,10 @@ async function checkSetupPersists(browser, base) {
     await page.locator('#name-form button').click();
   }
   await page.getByRole('button', { name: 'Weiter zu den Rollen' }).click();
+  const roles = await page.locator('#app').innerText();
+  assert.ok(roles.indexOf('Gastgeberin') >= 0, roles);
+  assert.strictEqual(roles.indexOf('Nutte'), -1);
+  await setCount(page, 'Gastgeberin', 1);
   const pool = page.getByRole('button', { name: /Mehr Rollen als Spieler/ });
   if ((await pool.innerText()).includes('an')) await pool.click();
   await setCount(page, 'Werwolf', 2);
@@ -235,6 +239,7 @@ async function checkSetupPersists(browser, base) {
   assert.strictEqual(wolves, 2);
   const stored = await page.evaluate(function () { return localStorage.getItem('werwolf.setup.v1'); });
   assert.ok(stored && stored.indexOf('"seerExact":true') >= 0, stored);
+  assert.ok(stored.indexOf('"nutte":1') >= 0, stored);
   await page.close();
 }
 
