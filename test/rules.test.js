@@ -54,17 +54,31 @@ function make(roles, opts) {
 
 function p(state, id) { return W.playerById(state, id); }
 
-function revealAndStart(state) {
+function amorPair(state, amorId, pair) {
+  const others = state.players.filter(function (person) { return person.id !== amorId; });
+  const chosen = pair || [others[others.length - 1].id, others[Math.max(0, others.length - 2)].id];
+  W.send(state, { type: 'select', id: chosen[0] });
+  W.send(state, { type: 'select', id: chosen[1] });
+  W.send(state, { type: 'confirm', ids: chosen });
+  if (state.step === 'love') W.send(state, { type: 'ack' });
+}
+
+function ackReveal(state, id, pairs) {
+  W.send(state, { type: 'reveal-pick', id: id });
+  if (state.step === 'link') amorPair(state, id, pairs && pairs[id]);
+  else if (state.step === 'love') W.send(state, { type: 'ack' });
+  else W.send(state, { type: 'ack' });
+}
+
+function revealAndStart(state, pairs) {
   assert.strictEqual(state.screen, 'reveal');
   assert.strictEqual(state.nightNumber, 0);
   W.send(state, { type: 'start-game' });
   assert.strictEqual(state.screen, 'reveal');
   assert.ok(state.error);
   state.players.forEach(function (person) {
-    W.send(state, { type: 'reveal-pick', id: person.id });
-    W.send(state, { type: 'ack' });
-    W.send(state, { type: 'reveal-pick', id: person.id });
-    W.send(state, { type: 'ack' });
+    ackReveal(state, person.id, pairs);
+    ackReveal(state, person.id, pairs);
   });
   W.send(state, { type: 'start-game' });
   assert.strictEqual(state.screen, 'night');
@@ -159,7 +173,18 @@ function step(state) {
   const view = W.view(state);
   if (view.screen === 'end') return false;
   if (view.screen === 'reveal') {
-    const unseen = state.players.filter(function (person) { return !state.revealed || !state.revealed[person.id]; })[0];
+    if (state.step === 'love') {
+      W.send(state, { type: 'ack' });
+      return true;
+    }
+    if (state.step === 'link') {
+      const others = state.players.filter(function (person) { return person.id !== state.activeId; });
+      W.send(state, { type: 'select', id: state.activeId });
+      W.send(state, { type: 'select', id: others[0].id });
+      W.send(state, { type: 'confirm', ids: [state.activeId, others[0].id] });
+      return true;
+    }
+    const unseen = state.players.filter(function (person) { return !W.revealDone(state, person); })[0];
     if (state.step === 'show') W.send(state, { type: 'ack' });
     else if (unseen) W.send(state, { type: 'reveal-pick', id: unseen.id });
     else W.send(state, { type: 'start-game' });
@@ -322,13 +347,12 @@ test('Start, Namensliste und Rollen bleiben bis zum Start sichtbar', function ()
 
 test('Amor verbindet Wolf und Dorf, das Paar gewinnt allein und bekommt Punkte', function () {
   const state = make(['werwolf', 'dorfbewohner', 'dorfbewohner', 'amor']);
-  revealAndStart(state);
-  openNight(state, 4);
-  W.send(state, { type: 'select', id: 1 });
-  W.send(state, { type: 'select', id: 2 });
-  W.send(state, { type: 'confirm', ids: [1, 2] });
+  revealAndStart(state, { 4: [1, 2] });
   assert.deepStrictEqual(p(state, 1).loverIds, [2]);
   assert.deepStrictEqual(p(state, 2).loverIds, [1]);
+  openNight(state, 4);
+  assert.notStrictEqual(W.view(state).prompt.kind, 'amor');
+  W.send(state, { type: 'ack' });
   openNight(state, 2);
   const love = W.view(state).prompt;
   assert.strictEqual(love.kind, 'love');
@@ -453,11 +477,10 @@ test('Liebestod durch Wolf, Gift, Wahl, Duell und Jäger', function () {
 
 test('Getrennte Paare bleiben getrennt, eine zweite Liebe verkettet', function () {
   const state = make(['amor', 'dorfbewohner', 'dorfbewohner', 'dorfbewohner', 'nachahmerin', 'werwolf'], { nachUses: 2 });
-  revealAndStart(state);
+  revealAndStart(state, { 1: [2, 3] });
   openNight(state, 1);
-  W.send(state, { type: 'select', id: 2 });
-  W.send(state, { type: 'select', id: 3 });
-  W.send(state, { type: 'confirm', ids: [2, 3] });
+  assert.notStrictEqual(W.view(state).prompt.kind, 'amor');
+  W.send(state, { type: 'ack' });
   openNight(state, 5);
   W.send(state, { type: 'confirm', id: 1 });
   W.send(state, { type: 'select', id: 4 });
@@ -506,12 +529,10 @@ test('Waschbär stiehlt Personen, sofort oder in der nächsten Nacht, und beende
   assert.strictEqual(away.pendingThefts[0].role, 'nutte');
 
   const amor = make(['waschbaer', 'amor', 'dorfbewohner', 'werwolf']);
-  revealAndStart(amor);
+  revealAndStart(amor, { 2: [2, 3] });
+  assert.deepStrictEqual(p(amor, 2).loverIds, [3]);
   openNight(amor, 2);
-  W.send(amor, { type: 'select', id: 2 });
-  W.send(amor, { type: 'select', id: 3 });
-  W.send(amor, { type: 'confirm', ids: [2, 3] });
-  assert.strictEqual(W.view(amor).prompt.kind, 'love');
+  assert.notStrictEqual(W.view(amor).prompt.kind, 'amor');
   W.send(amor, { type: 'ack' });
   openNight(amor, 1);
   W.send(amor, { type: 'confirm', id: 2 });
@@ -918,42 +939,101 @@ test('Politiker: die eigene Wahl beendet sofort, die Wahl des Partners nicht', f
   assert.strictEqual(partner.screen, 'hunter');
 });
 
-test('Amor muss verbinden, darf sich selbst wählen, Nachzügler sehen die Liebe erst in der nächsten Nacht', function () {
+test('Amor verbindet beim Aufdecken und bleibt offen, bis das Paar steht', function () {
   const state = make(['amor', 'dorfbewohner', 'dorfbewohner', 'werwolf']);
-  revealAndStart(state);
-  openNight(state, 2);
-  W.send(state, { type: 'ack' });
-  openNight(state, 1);
-  assert.strictEqual(W.view(state).prompt.kind, 'amor');
-  assert.strictEqual(W.view(state).prompt.forced, true);
+  W.send(state, { type: 'start-game' });
+  assert.strictEqual(state.screen, 'reveal');
+  W.send(state, { type: 'reveal-pick', id: 1 });
+  assert.strictEqual(state.step, 'link');
+  W.send(state, { type: 'back' });
+  assert.strictEqual(state.step, 'list');
+  assert.ok(!W.revealDone(state, p(state, 1)));
+  assert.ok(!p(state, 1).amorLinked);
+  assert.deepStrictEqual(p(state, 1).loverIds, []);
+  assert.ok(W.pendingNames(state).indexOf('P1') >= 0);
+  W.send(state, { type: 'reveal-pick', id: 1 });
   W.send(state, { type: 'skip' });
   assert.ok(state.error);
-  assert.strictEqual(W.view(state).prompt.kind, 'amor');
+  assert.strictEqual(state.step, 'link');
   W.send(state, { type: 'select', id: 1 });
   W.send(state, { type: 'select', id: 2 });
   W.send(state, { type: 'confirm', ids: [1, 2] });
+  assert.strictEqual(state.step, 'love');
   assert.deepStrictEqual(p(state, 1).loverIds, [2]);
-  assert.deepStrictEqual(p(state, 2).loverIds, [1]);
-  assert.strictEqual(W.view(state).prompt.kind, 'love');
-  assert.ok(W.loverComponent(state, 1).indexOf(2) >= 0);
-  assert.strictEqual(p(state, 2).role, 'dorfbewohner');
+  assert.strictEqual(p(state, 1).amorLinked, true);
+  assert.ok(!W.revealDone(state, p(state, 1)));
   W.send(state, { type: 'ack' });
-  assert.ok(state.nightDone.indexOf(1) >= 0);
-  openNight(state, 3);
-  assert.notStrictEqual(W.view(state).prompt.kind, 'love');
+  assert.strictEqual(state.step, 'list');
+  assert.ok(W.revealDone(state, p(state, 1)));
+  W.send(state, { type: 'reveal-pick', id: 1 });
+  assert.strictEqual(state.step, 'show');
+  assert.deepStrictEqual(p(state, 1).amorPair, [1, 2]);
   W.send(state, { type: 'ack' });
-  openNight(state, 4);
-  W.send(state, { type: 'skip' });
-  if (state.screen === 'announce') W.send(state, { type: 'ack' });
-  voteNiemand(state);
-  assert.strictEqual(state.nightNumber, 2);
+  [2, 3, 4].forEach(function (id) { ackReveal(state, id); });
+  W.send(state, { type: 'start-game' });
+  assert.strictEqual(state.screen, 'night');
   openNight(state, 1);
+  assert.notStrictEqual(W.view(state).prompt.kind, 'amor');
   assert.notStrictEqual(W.view(state).prompt.kind, 'love');
   W.send(state, { type: 'ack' });
   openNight(state, 2);
   assert.strictEqual(W.view(state).prompt.kind, 'love');
-  assert.strictEqual(p(state, 1).role, 'amor');
-  assert.ok(p(state, 2).loverIds.indexOf(1) >= 0);
+  assert.strictEqual(p(state, 2).role, 'dorfbewohner');
+  W.send(state, { type: 'ack' });
+  openNight(state, 3);
+  assert.notStrictEqual(W.view(state).prompt.kind, 'love');
+});
+
+test('Zurück vom Aufdecken verwirft die Rollen, ab zwei Gesehenen erst nach Frage', function () {
+  const roles = ['amor', 'dorfbewohner', 'dorfbewohner', 'werwolf'];
+  function paint(state) {
+    roles.forEach(function (role, index) {
+      const person = state.players[index];
+      person.role = role;
+      person.alive = true;
+      person.loverIds = [];
+      person.amorLinked = false;
+      person.amorPair = null;
+      person.healsLeft = 0;
+      person.poisonLeft = false;
+    });
+  }
+  const state = make(roles);
+  const wolves = state.counts.werwolf;
+  W.send(state, { type: 'undo-deal' });
+  assert.strictEqual(state.screen, 'setup');
+  assert.strictEqual(state.players[0].role, undefined);
+  assert.strictEqual(state.counts.werwolf, wolves);
+  W.send(state, { type: 'deal' });
+  paint(state);
+  assert.strictEqual(state.screen, 'reveal');
+  W.send(state, { type: 'reveal-pick', id: 2 });
+  W.send(state, { type: 'ack' });
+  W.send(state, { type: 'undo-deal' });
+  assert.strictEqual(state.screen, 'setup');
+  assert.strictEqual(state.players[1].role, undefined);
+  W.send(state, { type: 'deal' });
+  paint(state);
+  ackReveal(state, 2);
+  ackReveal(state, 3);
+  assert.ok(W.revealDone(state, p(state, 2)));
+  W.send(state, { type: 'undo-deal' });
+  assert.strictEqual(state.confirmUndoDeal, true);
+  assert.strictEqual(state.screen, 'reveal');
+  assert.ok(p(state, 2).role);
+  W.send(state, { type: 'undo-deal-no' });
+  assert.ok(!state.confirmUndoDeal);
+  W.send(state, { type: 'reveal-pick', id: 1 });
+  W.send(state, { type: 'select', id: 1 });
+  W.send(state, { type: 'select', id: 4 });
+  W.send(state, { type: 'confirm', ids: [1, 4] });
+  if (state.step === 'love') W.send(state, { type: 'ack' });
+  assert.ok(p(state, 1).amorLinked);
+  W.send(state, { type: 'undo-deal', confirm: true });
+  assert.strictEqual(state.screen, 'setup');
+  assert.strictEqual(state.players[0].role, undefined);
+  assert.ok(!state.players[0].amorLinked);
+  assert.strictEqual(state.counts.werwolf, wolves);
 });
 
 test('Nachahmerin: Amor ohne zwei Lebende entfällt, der Russe erzwingt am nächsten Tag das Duell', function () {
@@ -1156,6 +1236,34 @@ test('Zurück nach dem Namen verbraucht nichts und macht den Namen nicht grau', 
   assert.strictEqual(duel.duel.stage, 'who');
   assert.strictEqual(p(duel, 1).russeUsed, false);
   assert.strictEqual(duel.screen, 'duel');
+});
+
+test('Wolfsopfer öffnet nicht den eigenen Nachtbildschirm', function () {
+  const state = make(['A', 'B', 'C', 'D', 'Felix', 'Max'].map(function (name, index) {
+    return index === 4 ? 'amor' : index === 5 ? 'werwolf' : 'dorfbewohner';
+  }));
+  revealAndStart(state, { 5: [1, 2] });
+  W.send(state, { type: 'night-pick', id: 6 });
+  assert.strictEqual(state.step, 'ready');
+  assert.strictEqual(state.activeId, 6);
+  W.send(state, { type: 'go' });
+  assert.strictEqual(W.view(state).prompt.kind, 'wolf');
+  W.send(state, { type: 'select', id: 5 });
+  assert.strictEqual(state.activeId, 6);
+  assert.strictEqual(state.step, 'show');
+  W.send(state, { type: 'confirm', id: 5, ids: [5] });
+  assert.strictEqual(state.screen, 'night');
+  assert.strictEqual(state.step, 'list');
+  assert.strictEqual(state.activeId, null);
+  assert.deepStrictEqual(state.prompts, []);
+  assert.deepStrictEqual(state.nightDone, [6]);
+  assert.strictEqual(state.wolfVotes[6], 5);
+  assert.strictEqual(W.view(state).prompt, null);
+  assert.notStrictEqual(W.view(state).playerId, 5);
+  W.send(state, { type: 'night-pick', id: 5 });
+  W.send(state, { type: 'go' });
+  assert.strictEqual(state.activeId, 5);
+  assert.notStrictEqual(W.view(state).prompt.kind, 'amor');
 });
 
 test('Ein lebender Politiker zählt gegen den Wolfsieg, das Dorf gewinnt ohne Wölfe trotzdem', function () {

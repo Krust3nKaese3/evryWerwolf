@@ -71,6 +71,8 @@ async function main() {
   try {
     await checkLegacy(browser, base);
     await checkFreshWolves(browser, base);
+    await checkSetupPersists(browser, base);
+    await checkUndoReveal(browser, base);
     await checkScores(browser, base);
   } finally {
     await browser.close();
@@ -207,6 +209,89 @@ async function reachWolf(page) {
     throw new Error('unerwarteter Screen\n' + text.slice(0, 300));
   }
   throw new Error('Werwolf nicht erreicht');
+}
+
+async function checkSetupPersists(browser, base) {
+  const page = await browser.newPage({ viewport: { width: 412, height: 915 }, locale: 'de-DE' });
+  await page.goto(base);
+  for (const name of ['Anna', 'Bea', 'Chris', 'Dora']) {
+    await page.fill('#name-input', name);
+    await page.locator('#name-form button').click();
+  }
+  await page.getByRole('button', { name: 'Weiter zu den Rollen' }).click();
+  const pool = page.getByRole('button', { name: /Mehr Rollen als Spieler/ });
+  if ((await pool.innerText()).includes('an')) await pool.click();
+  await setCount(page, 'Werwolf', 2);
+  const seer = page.getByRole('button', { name: /Seherin sieht genaue Rolle/ });
+  if ((await seer.innerText()).includes('aus')) await seer.click();
+  assert.ok((await seer.innerText()).includes('an'));
+  await page.getByRole('button', { name: 'Zurück zu den Namen' }).click();
+  await page.reload();
+  await page.getByRole('button', { name: 'Weiter zu den Rollen' }).click();
+  const again = page.getByRole('button', { name: /Seherin sieht genaue Rolle/ });
+  assert.ok((await again.innerText()).includes('an'));
+  assert.ok((await page.getByRole('button', { name: /Mehr Rollen als Spieler/ }).innerText()).includes('aus'));
+  const wolves = Number((await page.locator('.stepper', { hasText: 'Werwolf' }).first().locator('strong').innerText()).trim());
+  assert.strictEqual(wolves, 2);
+  const stored = await page.evaluate(function () { return localStorage.getItem('werwolf.setup.v1'); });
+  assert.ok(stored && stored.indexOf('"seerExact":true') >= 0, stored);
+  await page.close();
+}
+
+async function finishCard(page) {
+  if (await page.getByText('Du bist Amor').count()) {
+    const choices = page.locator('button[data-act="select"]');
+    await choices.nth(0).click();
+    await choices.nth(1).click();
+    await page.getByRole('button', { name: 'Fertig' }).click();
+    const cover = page.getByRole('button', { name: 'Verdecken' });
+    if (await cover.count()) await cover.click();
+    return;
+  }
+  await page.getByRole('button', { name: 'Verstanden, verdecken' }).click();
+}
+
+async function checkUndoReveal(browser, base) {
+  const opened = await open(browser, base, null);
+  const page = opened.page;
+  for (const name of ['Anna', 'Bea', 'Chris', 'Dora']) {
+    await page.fill('#name-input', name);
+    await page.locator('#name-form button').click();
+  }
+  await page.getByRole('button', { name: 'Weiter zu den Rollen' }).click();
+  const pool = page.getByRole('button', { name: /Mehr Rollen als Spieler/ });
+  if ((await pool.innerText()).includes('an')) await pool.click();
+  await setCount(page, 'Amor', 1);
+  await setCount(page, 'Dorfbewohner', 2);
+  await page.getByRole('button', { name: 'Rollen verteilen' }).click();
+  await page.getByRole('button', { name: 'Zurück', exact: true }).click();
+  await page.getByRole('button', { name: 'Rollen verteilen' }).waitFor();
+
+  await page.getByRole('button', { name: 'Rollen verteilen' }).click();
+  await page.locator('button[data-act="reveal-pick"]').first().click();
+  await finishCard(page);
+  await page.getByRole('button', { name: 'Zurück', exact: true }).click();
+  await page.getByRole('button', { name: 'Rollen verteilen' }).waitFor();
+
+  await page.getByRole('button', { name: 'Rollen verteilen' }).click();
+  await page.locator('button[data-act="reveal-pick"]').nth(0).click();
+  await finishCard(page);
+  await page.locator('button[data-act="reveal-pick"]').nth(1).click();
+  await finishCard(page);
+  await page.getByRole('button', { name: 'Zurück', exact: true }).click();
+  const ask = await page.locator('#app').innerText();
+  assert.ok(ask.indexOf('Mehr als eine Person hat die Rolle schon gesehen') >= 0, ask);
+  await page.getByRole('button', { name: 'Abbrechen' }).click();
+  assert.ok((await page.locator('#app').innerText()).indexOf('Spiel starten') >= 0);
+  await page.getByRole('button', { name: 'Zurück', exact: true }).click();
+  await page.getByRole('button', { name: 'Ja, Rollen verwerfen' }).click();
+  await page.getByRole('button', { name: 'Rollen verteilen' }).waitFor();
+  const wolves = Number((await page.locator('.stepper', { hasText: 'Werwolf' }).first().locator('strong').innerText()).trim());
+  assert.strictEqual(wolves, 1);
+  const amor = Number((await page.locator('.stepper', { hasText: 'Amor' }).first().locator('strong').innerText()).trim());
+  assert.strictEqual(amor, 1);
+  assert.deepStrictEqual(opened.errors, []);
+  await page.close();
 }
 
 async function checkScores(browser, base) {

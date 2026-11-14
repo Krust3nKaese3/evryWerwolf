@@ -52,11 +52,18 @@ function ackWhile(state, pred) {
   }
 }
 
-function startNight(state) {
+function startNight(state, pairs) {
   if (state.screen === 'reveal') {
     state.players.forEach(function (p) {
       W.send(state, { type: 'reveal-pick', id: p.id });
-      W.send(state, { type: 'ack' });
+      if (state.step === 'link') {
+        const others = state.players.filter(function (one) { return one.id !== p.id; });
+        const pair = (pairs && pairs[p.id]) || [p.id, others[0].id];
+        W.send(state, { type: 'select', id: pair[0] });
+        W.send(state, { type: 'select', id: pair[1] });
+        W.send(state, { type: 'confirm', ids: pair });
+        if (state.step === 'love') W.send(state, { type: 'ack' });
+      } else W.send(state, { type: 'ack' });
     });
     W.send(state, { type: 'start-game' });
   }
@@ -407,7 +414,7 @@ test('Seherin sieht das Lager der Nutte, Amor verbindet sie, Waschbär stiehlt d
   };
   const state = game(['See', 'Amor', 'Wasch', 'Nutte'], counts, 1);
   setRoles(state, ['seherin', 'amor', 'waschbaer', 'nutte']);
-  startNight(state);
+  startNight(state, { 2: [4, 1] });
   let seenRole = null;
   playNight(state, function (view, s) {
     const kind = view.prompt && view.prompt.kind;

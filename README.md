@@ -26,7 +26,7 @@ Nach einem Push die Mini-App in EveryApp mit ⟳ aktualisieren.
 
 1. **Namen.** Nacheinander, im Uhrzeigersinn. Diese Reihenfolge ist die Sitzordnung und wird sofort gespeichert.
 2. **Rollen.** Ein Vorschlag hängt von der Spielerzahl ab und lässt sich ändern. **Mehr Rollen als Spieler** ist standardmäßig an: die Karten sind ein Pool, verteilt wird nur die Spielerzahl, der Rest bleibt draußen. Werwolf hat dann ein Minimum und ein Maximum. Mindestens so viele Wölfe werden immer ausgeteilt, höchstens so viele, der Rest ist Zufall aus dem Pool. Aus ist die alte Regel: die Summe muss genau die Spielerzahl sein. Heiltränke der Hexe: 1 bis 8, Standard 2. Nachahmungen: 1 bis 5, Standard 1.
-3. **Aufdecken.** Alle Namen stehen in einer Liste. Jede Person tippt den eigenen Namen. Danach ist der Name grau, bleibt aber antippbar. **Spiel starten** ist grau, bis jede Person die Rolle mindestens einmal gesehen hat, und beginnt dann Nacht 1.
+3. **Aufdecken.** Alle Namen stehen in einer Liste. Jede Person tippt den eigenen Namen. Der Name wird grau, wenn sie fertig ist, und bleibt antippbar. Amor ist erst fertig, wenn er beim Aufdecken ein Paar verbunden hat. **Spiel starten** bleibt grau, solange jemand fehlt; darunter steht, wer noch nicht fertig ist, ohne Rollen zu nennen. **Zurück** geht zur Rollenwahl. Haben höchstens eine Person die Rolle gesehen, sofort. Ab der zweiten Person erst nach einer Rückfrage. Der Wurf ist dann verworfen, auch ein Amor-Paar. Die Rollenwahl bleibt erhalten.
 4. **Nacht 1** kommt vor Tag 1. Der Bürgermeister ist die erste Person der Sitzordnung und bleibt das an Tag 1, außer er stirbt.
 5. **Nacht.** Alle lebenden Namen stehen in einer Liste, ohne vorgegebene Reihenfolge. Die Person tippt den eigenen Namen, dann **Go**, dann die Fähigkeit oder **Ich will gar nichts machen**. Danach ist der Name grau und diese Nacht nicht mehr antippbar. Wer keine Fähigkeit hat, sieht denselben Ablauf. Sind alle grau, löst die Nacht auf.
 6. **Morgen.** Die App sagt, wer gestorben ist und wen die Schaufel zurückgeholt hat. Danach Tag 1, dann Nacht 2, und so weiter.
@@ -44,7 +44,7 @@ Anzeigenamen stehen nur in `ROLE_NAMES` in `game.js`.
 | Dorfbewohner | Dorf | Keine. Tippt nachts den eigenen Namen und dann „Ich will gar nichts machen“. |
 | Hexe | Dorf | Heiltränke für das ganze Spiel, Anzahl in der Einrichtung (1 bis 8, Standard 2), plus ein Gifttrank. Sie sieht das Opfer nicht. |
 | Seherin | Dorf | Sieht nachts eine **Person**. Standard nur **Team Dorfbewohner** oder **Böse**. Der Schalter „Seherin sieht genaue Rolle“ zeigt die Rolle. |
-| Amor | Dorf | Nur in Nacht 1, verbindet zwei **Personen**, sich selbst eingeschlossen. Aussetzen geht nicht. |
+| Amor | Dorf | Beim Aufdecken verbindet er zwei **Personen**, sich selbst eingeschlossen. Aussetzen geht nicht. Danach nachts keine eigene Aktion. |
 | Jäger | Dorf | Schießt, wenn er stirbt, auf eine **Person**. |
 | Waschbär | Dorf, bis er stiehlt | Einmal optional die Rolle einer lebenden **Person** stehlen. |
 | Nachahmerin | Dorf | Begrenzt oft die Fähigkeit einer anderen Person frisch nachahmen und sofort einsetzen. Anzahl in der Einrichtung, Standard 1, höchstens 5. |
@@ -61,7 +61,7 @@ Die Aktion kann übersprungen werden, der Screen bietet das ausdrücklich an. Zi
 
 Hat die Person ihren Namen in dieser Nacht **noch nicht** angetippt, gilt der Diebstahl sofort: sie ist ab jetzt Dorfbewohner und erfährt das, sobald sie ihren Namen tippt. Der Waschbär spielt die neue Fähigkeit noch in derselben Nacht weiter, voll aufgeladen. Hat sie schon gehandelt, bleibt es bei der alten Regel: die Rolle wechselt erst in der **nächsten** Nacht, und sie darf die alte Aktion dieser Nacht behalten, wenn sie noch ansteht. In beiden Fällen erfährt sie es nur auf dem eigenen privaten Zug.
 
-Die bestohlene Person wird auch dann Dorfbewohner, wenn der Waschbär vorher stirbt. Der Diebstahl selbst beendet das Spiel nicht. Gewertet wird erst bei der nächsten normalen Siegprüfung. Ein gestohlener Werwolf macht den Waschbären zum Wolf, das Rudel ist also nicht weg. Ein bestohlener Amor hat in einer späteren Nacht keine Aktion, weil Amor nur in Nacht 1 handelt. Stiehlt er den Amor noch in Nacht 1, bevor der Amor dran war, verbindet er selbst. Liebe bleibt bei der bestohlenen Person. Das Bürgermeisteramt wandert davon nicht.
+Die bestohlene Person wird auch dann Dorfbewohner, wenn der Waschbär vorher stirbt. Der Diebstahl selbst beendet das Spiel nicht. Gewertet wird erst bei der nächsten normalen Siegprüfung. Ein gestohlener Werwolf macht den Waschbären zum Wolf, das Rudel ist also nicht weg. Ein bestohlener Amor hat nachts keine Aktion, weil Amor beim Aufdecken schon verbunden hat. Liebe bleibt bei der bestohlenen Person. Das Bürgermeisteramt wandert davon nicht.
 
 ### Nachahmerin
 
@@ -110,7 +110,7 @@ Amor, die Seherin und der Waschbär treffen Personen, auch die Nutte. Wo die Nut
 
 ## Nacht
 
-Alle Lebenden stehen in einer Liste. Die Person tippt den eigenen Namen. Auf dem nächsten Screen steht immer **Zurück**: falscher Name, zurück zur Liste, nichts ist verbraucht und der Name bleibt offen. Erst die Aktion selbst, **Ich will gar nichts machen** oder **Fertig** macht den Namen grau. Danach nur der eigene Screen: Fähigkeit, oder **Ich will gar nichts machen**. Die Nutte muss ein Haus wählen. Wer fertig ist, ist grau und nicht mehr antippbar. Liebe und ein Diebstahlshinweis erscheinen auf diesem privaten Screen, wenn sie fällig sind. Dasselbe Zurück gilt beim Rollenaufdecken, bei der Abstimmung, beim Jägerschuss und beim Duell, bevor der Name bestätigt ist.
+Alle Lebenden stehen in einer Liste. Die Person tippt den eigenen Namen. Auf dem nächsten Screen steht immer **Zurück**: falscher Name, zurück zur Liste, nichts ist verbraucht und der Name bleibt offen. Erst die Aktion selbst, **Ich will gar nichts machen** oder **Fertig** macht den Namen grau und legt das Handy auf die Namensliste zurück. Das gewählte Ziel, das Haus oder die Stimme öffnet nie den nächsten Bildschirm. Danach nur der eigene Screen, und nur wenn diese Person selbst ihren Namen tippt: Fähigkeit, oder **Ich will gar nichts machen**. Die Nutte muss ein Haus wählen. Wer fertig ist, ist grau und nicht mehr antippbar. Liebe und ein Diebstahlshinweis erscheinen auf diesem privaten Screen, wenn sie fällig sind. Dasselbe Zurück gilt beim Rollenaufdecken, bei der Abstimmung, beim Jägerschuss und beim Duell, bevor der Name bestätigt ist.
 
 Die Hexe darf in diesem Zug so viele Heiltränke legen, wie sie noch hat, jedes Haus einmal, und danach den Gifttrank. Beides kann sie lassen. Eine nachgeahmte Hexe bekommt die eingestellte Zahl Heiltränke frisch für diese Nacht, plus einen Gifttrank.
 
@@ -128,9 +128,9 @@ Auflösung, in dieser Reihenfolge:
 
 ## Liebe
 
-Amor und eine Amor-Kopie verbinden je zwei lebende Personen. Amor darf sich selbst wählen. Tut er das, sieht er sofort danach, groß, Partner und Rolle, und schließt den Zug erst dann ab. In Nacht 1 muss er verbinden, der Screen bietet kein Aussetzen. Zwei getrennte Paare bleiben zwei Paare: A–B und C–D sterben und gewinnen nicht gemeinsam. Eine Kette entsteht nur, wenn jemand doppelt verbunden ist: A–B und B–C werden A–B–C.
+Amor verbindet beim Aufdecken, nicht in Nacht 1. Er darf sich selbst wählen. Tut er das, sieht er sofort danach, groß, Partner und Rolle, und ist erst danach fertig. Vor dem Bestätigen wirft Zurück nichts weg: kein Paar, der Name bleibt offen. Danach zeigt ein erneutes Antippen nur noch Rolle und Paar. Eine Amor-Kopie der Nachahmerin verbindet weiterhin in der Nacht. Zwei getrennte Paare bleiben zwei Paare: A–B und C–D sterben und gewinnen nicht gemeinsam. Eine Kette entsteht nur, wenn jemand doppelt verbunden ist: A–B und B–C werden A–B–C.
 
-Stirbt eine Person der Kette, sterben alle verbundenen mit. Wer in Nacht 1 noch nicht dran war, sieht auf dem eigenen Zug Partner und Rolle. Wer in Nacht 1 schon gehandelt hat, bevor Amor verbunden hat, sieht denselben großen Hinweis erst am Anfang der **nächsten** Nacht, wenn der eigene Name angetippt wird.
+Stirbt eine Person der Kette, sterben alle verbundenen mit. Wer außer Amor selbst verliebt ist, sieht Partner und Rolle am Anfang des eigenen Zugs in Nacht 1, sobald der eigene Name angetippt wird. Amor selbst hat das schon beim Aufdecken gesehen. Wer in einer späteren Nacht schon gehandelt hat, bevor eine Kopie verbindet, sieht denselben großen Hinweis erst am Anfang der **nächsten** Nacht.
 
 Eine Gruppe gewinnt, wenn **genau ihre Mitglieder** noch leben und es mindestens zwei sind. Das gilt für ein gemischtes Paar, eine reine Dorfgruppe und eine reine Wolfsgruppe. Ein einzelnes anderes Paar, das noch lebt, verhindert den Liebessieg. Der Liebessieg wird vor Dorf und Wölfen geprüft.
 
@@ -167,7 +167,7 @@ Start ist nur erlaubt, wenn mindestens ein Werwolf da ist, mindestens eine Perso
 
 ## Speicher und Fehlerbericht
 
-Namen liegen unter `werwolf.lobby.v1`, sobald jemand einen Namen hinzufügt, ändert sich die Liste also sofort. Das laufende Spiel liegt unter `werwolf.game.v1`. Punkte liegen unter `werwolf.scores.v1`, pro Name, und bleiben über Spiele und Neustarts. Home und „Spiel abbrechen“ löschen nur das Spiel, nicht die Namen und nicht die Punkte. **Punkte zurücksetzen** fragt nach und löscht erst nach der Bestätigung. Ein Nachtstand aus der Rohfassung, der noch in der ersten Runde hängt, wird auf den offenen Zug gesetzt. Ein Stand aus der zweiten Runde geht zurück in die Lobby, die Namen bleiben.
+Namen liegen unter `werwolf.lobby.v1`, sobald jemand einen Namen hinzufügt, ändert sich die Liste also sofort. Die Rollenwahl (Anzahlen, Einsätze, Heiltränke, Pool, Wolfsminimum und -maximum, Seherin genau) liegt unter `werwolf.setup.v1` und wird bei jeder Änderung gespeichert. Sie kommt beim Start, beim erneuten Öffnen der Rollenwahl und bei einem neuen Spiel wieder. Das laufende Spiel liegt unter `werwolf.game.v1`. Punkte liegen unter `werwolf.scores.v1`, pro Name, und bleiben über Spiele und Neustarts. Home und „Spiel abbrechen“ löschen nur das Spiel, nicht die Namen und nicht die Punkte. **Punkte zurücksetzen** fragt nach und löscht erst nach der Bestätigung. Ein Nachtstand aus der Rohfassung, der noch in der ersten Runde hängt, wird auf den offenen Zug gesetzt. Ein Stand aus der zweiten Runde geht zurück in die Lobby, die Namen bleiben.
 
 Das Käfer-Symbol sitzt auf jedem Screen, ohne selbst eine Rolle zu verraten. Es öffnet einen Bericht mit Beschreibungsfeld. **Kopieren** legt einen Markdown-Block in die Zwischenablage: Beschreibung, Version, Zeitpunkt, Konfiguration, den kompletten Spielstand und das Aktionsprotokoll (Bildwechsel, Tipps, Nachtaktionen, Auflösung, Fehler mit Stack). Zurück schließt den Bericht und lässt das Spiel, wie es war. Der Text enthält Geheimnisse.
 
@@ -180,7 +180,7 @@ UX-Verbesserungen laufen weiter auf `main`. Später vergleichen wir die Oberflä
 Gegenüber `roh`:
 
 - **Nacht.** Keine vorgegebene Reihenfolge und keine zweite Runde. Liste aller Lebenden, eigener Name, **Go**, Fähigkeit oder **Ich will gar nichts machen**. Danach grau und nicht mehr antippbar.
-- **Rollen.** Liste aller Namen. Nach dem Ansehen grau, aber weiter antippbar. **Spiel starten** bleibt grau, bis jede Person die Rolle mindestens einmal gesehen hat.
+- **Rollen.** Liste aller Namen. Grau erst, wenn die Person fertig ist. Amor erst nach dem Paar. **Spiel starten** bleibt grau, bis alle fertig sind, mit dem Hinweis, wer noch fehlt. **Zurück** zur Rollenwahl verwirft den Wurf; ab zwei Personen, die die Rolle gesehen haben, erst nach Rückfrage.
 - **Überall handeln.** Abstimmung, Jägerschuss, Liebesgeständnis und Diebstahlshinweis laufen über die Namensliste: eigener Name, Aktion, danach grau und nicht mehr antippbar. Kein „X ist bereit“. Liebe und Diebstahl erscheinen auf dem eigenen Nachtzug, sobald die Person ihren Namen tippt.
 - **Duell.** Die Reihenfolge der Abzüge bleibt die Regel. Der Übergabeschirm „ist bereit“ entfällt, der Abzug kommt direkt.
 - **Rollenpool.** Schalter **Mehr Rollen als Spieler**, standardmäßig an. Pool darf größer sein als die Runde, Rest bleibt draußen. Werwolf hat Minimum und Maximum. Liegt das Minimum über dem Maximum, zieht das Maximum mit. Liegt das Maximum unter dem Minimum, zieht das Minimum mit. Ein Minimum über dem Maximum kommt nicht vor.
