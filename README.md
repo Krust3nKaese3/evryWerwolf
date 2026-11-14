@@ -160,7 +160,7 @@ Geprüft nach der Tagesauflösung und am Morgen nach Schüssen und Wiederbelebun
 1. Wurde der Politiker gewählt, gewinnt er sofort allein.
 2. Sonst gewinnt eine Liebesgruppe, die als Einzige noch lebt.
 3. Sonst gewinnt das Dorf, wenn kein Werwolf mehr lebt und noch jemand vom Dorf lebt. Ein lebender Politiker hindert das nicht.
-4. Sonst gewinnen die Werwölfe, wenn mindestens einer lebt und sie **mindestens so viele** sind wie die lebende Dorfseite. Der Politiker zählt auf keiner der beiden Seiten mit. Ein Werwolf und ein Politiker, ohne Dorf, sind ein Wolfsieg.
+4. Sonst gewinnen die Werwölfe, wenn mindestens einer lebt und sie **mindestens so viele** sind wie alle anderen Lebenden. Der Politiker zählt dabei als Nicht-Wolf mit. Zwei Wölfe, zwei Dorfleute und ein lebender Politiker gehen weiter. Ein Wolf, eine Schaufel und ein lebender Politiker auch. Ein Werwolf und ein Politiker, ohne sonst jemanden, sind ein Wolfsieg.
 5. Lebt niemand mehr, oder nur noch der Politiker, gewinnt niemand.
 
 Start ist nur erlaubt, wenn mindestens ein Werwolf da ist, mindestens eine Person auf der Dorfseite, und die Wölfe weniger sind als die Dorfseite. Der Politiker ist dabei keine Dorfseite. Mindestens 4 Namen, nach oben offen.

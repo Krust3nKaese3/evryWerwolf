@@ -626,9 +626,10 @@
       state.winReason = 'Nur der Politiker ist noch da. Niemand gewinnt.';
       return state.winner;
     }
-    if (wolves >= village) {
+    var others = alive.length - wolves;
+    if (wolves >= others) {
       state.winner = 'woelfe';
-      state.winReason = 'Die Werwölfe sind mindestens so viele wie die Dorfseite. Der Politiker zählt dabei nicht mit.';
+      state.winReason = 'Die Werwölfe sind mindestens so viele wie alle anderen Lebenden. Der Politiker zählt dabei als Nicht-Wolf mit.';
       return state.winner;
     }
     return null;
