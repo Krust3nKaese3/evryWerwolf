@@ -1158,6 +1158,34 @@ test('Zurück nach dem Namen verbraucht nichts und macht den Namen nicht grau', 
   assert.strictEqual(duel.screen, 'duel');
 });
 
+test('Wolfsopfer öffnet nicht den eigenen Nachtbildschirm', function () {
+  const state = make(['A', 'B', 'C', 'D', 'Felix', 'Max'].map(function (name, index) {
+    return index === 4 ? 'amor' : index === 5 ? 'werwolf' : 'dorfbewohner';
+  }));
+  revealAndStart(state);
+  W.send(state, { type: 'night-pick', id: 6 });
+  assert.strictEqual(state.step, 'ready');
+  assert.strictEqual(state.activeId, 6);
+  W.send(state, { type: 'go' });
+  assert.strictEqual(W.view(state).prompt.kind, 'wolf');
+  W.send(state, { type: 'select', id: 5 });
+  assert.strictEqual(state.activeId, 6);
+  assert.strictEqual(state.step, 'show');
+  W.send(state, { type: 'confirm', id: 5, ids: [5] });
+  assert.strictEqual(state.screen, 'night');
+  assert.strictEqual(state.step, 'list');
+  assert.strictEqual(state.activeId, null);
+  assert.deepStrictEqual(state.prompts, []);
+  assert.deepStrictEqual(state.nightDone, [6]);
+  assert.strictEqual(state.wolfVotes[6], 5);
+  assert.strictEqual(W.view(state).prompt, null);
+  assert.notStrictEqual(W.view(state).playerId, 5);
+  W.send(state, { type: 'night-pick', id: 5 });
+  W.send(state, { type: 'go' });
+  assert.strictEqual(state.activeId, 5);
+  assert.strictEqual(W.view(state).prompt.kind, 'amor');
+});
+
 test('Ein lebender Politiker zählt gegen den Wolfsieg, das Dorf gewinnt ohne Wölfe trotzdem', function () {
   const even = make(['werwolf', 'werwolf', 'dorfbewohner', 'dorfbewohner', 'politiker']);
   assert.strictEqual(W.checkWin(even), null);

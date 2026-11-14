@@ -106,7 +106,10 @@
     scores = result.scores;
   }
 
+  var rendering = false;
+
   function act(action) {
+    if (rendering) return;
     if (action.type === 'reset-ask') { confirmReset = true; render(); return; }
     if (action.type === 'reset-cancel') { confirmReset = false; render(); return; }
     if (action.type === 'reset-scores') {
@@ -118,10 +121,15 @@
       return;
     }
     confirmReset = false;
-    W.send(state, action);
-    applyScores();
-    persist();
-    render();
+    rendering = true;
+    try {
+      W.send(state, action);
+      applyScores();
+      persist();
+      render();
+    } finally {
+      rendering = false;
+    }
   }
 
   var ROLE_ICON = {
@@ -731,6 +739,7 @@ if (duel.stage === 'pull-handoff' || duel.stage === 'pull-ready') {
   }
 
   app.addEventListener('click', function (event) {
+    if (rendering) return;
     var el = event.target.closest('[data-act]');
     if (!el || el.disabled) return;
     var type = el.getAttribute('data-act');

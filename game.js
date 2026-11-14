@@ -843,8 +843,28 @@
   }
 
   function openTurn(state) {
-    var id = currentId(state);
+    var id = state.actorId;
+    if ((state.screen === 'night' || state.screen === 'vote') && id == null) {
+      state.step = 'list';
+      state.activeId = null;
+      state.prompts = [];
+      state.promptIndex = 0;
+      state.selection = [];
+      return;
+    }
+    if (id == null) id = currentId(state);
     var player = playerById(state, id);
+    if (!player) {
+      state.step = 'list';
+      state.activeId = null;
+      state.actorId = null;
+      state.prompts = [];
+      state.promptIndex = 0;
+      state.selection = [];
+      return;
+    }
+    state.activeId = player.id;
+    state.actorId = player.id;
     state.step = 'show';
     state.selection = [];
     state.error = '';
@@ -876,6 +896,7 @@
     if (!state.voteDone) state.voteDone = [];
     if (id != null && state.voteDone.indexOf(id) < 0) state.voteDone.push(id);
     state.activeId = null;
+    state.actorId = null;
     state.prompts = [];
     state.promptIndex = 0;
     state.selection = [];
@@ -892,6 +913,7 @@
     var id = state.activeId;
     if (id != null && state.nightDone.indexOf(id) < 0) state.nightDone.push(id);
     state.activeId = null;
+    state.actorId = null;
     state.prompts = [];
     state.promptIndex = 0;
     state.selection = [];
@@ -942,6 +964,7 @@
       });
       state.step = 'list';
       state.activeId = null;
+      state.actorId = null;
       state.hunterId = null;
       state.selection = [];
       setScreen(state, 'hunter');
@@ -1410,6 +1433,7 @@
     var prompt = state.prompts && state.prompts[state.promptIndex || 0];
     if (state.step === 'show' && prompt && actorId != null && livingTarget(state, actorId)) {
       state.activeId = actorId;
+      state.actorId = actorId;
       if (state.promptIndex == null) state.promptIndex = 0;
     } else if (state.activeId == null) {
       state.step = 'list';
@@ -1423,14 +1447,36 @@
 
   function send(state, action) {
     action = action || {};
+    var screenBefore = state && state.screen;
+    var actorBefore = state && state.activeId;
     try {
       adoptSaved(state);
+      screenBefore = state.screen;
+      actorBefore = state.activeId;
       dispatch(state, action);
     } catch (error) {
       note(state, 'Fehler ' + error.message + '\n' + (error.stack || ''));
       state.error = 'Interner Fehler.';
     }
+    keepRoster(state, action, screenBefore, actorBefore);
     return state;
+  }
+
+  function keepRoster(state, action, screenBefore, actorBefore) {
+    if (!state || (screenBefore !== 'night' && screenBefore !== 'vote')) return;
+    if (state.screen !== screenBefore) return;
+    if (action.type === 'night-pick' || action.type === 'vote-pick' || action.type === 'go' || action.type === 'back') return;
+    var done = screenBefore === 'night' ? state.nightDone : state.voteDone;
+    if (actorBefore != null && done && done.indexOf(actorBefore) >= 0) {
+      state.step = 'list';
+      state.activeId = null;
+      state.actorId = null;
+      state.prompts = [];
+      state.promptIndex = 0;
+      state.selection = [];
+      return;
+    }
+    if (state.step === 'show' && actorBefore != null && state.activeId !== actorBefore) state.activeId = actorBefore;
   }
 
   function dispatch(state, action) {
@@ -1645,7 +1691,11 @@
         return;
       }
       state.activeId = picked.id;
+      state.actorId = picked.id;
       state.step = 'ready';
+      state.prompts = [];
+      state.promptIndex = 0;
+      state.selection = [];
       state.error = '';
       note(state, 'Nachtwahl ' + picked.name);
       return;
@@ -1660,7 +1710,11 @@
         return;
       }
       state.activeId = voter.id;
+      state.actorId = voter.id;
       state.step = 'ready';
+      state.prompts = [];
+      state.promptIndex = 0;
+      state.selection = [];
       state.error = '';
       note(state, 'Abstimmungswahl ' + voter.name);
       return;
@@ -1668,6 +1722,7 @@
     if ((state.screen === 'night' || state.screen === 'vote') && state.step === 'ready') {
       if (action.type === 'back') {
         state.activeId = null;
+        state.actorId = null;
         state.step = 'list';
         state.error = '';
         return;
@@ -1678,18 +1733,13 @@
       return;
     }
     if (state.step === 'handoff') {
-      if (action.type === 'back') {
-        state.activeId = null;
-        state.step = 'list';
-        state.prompts = [];
-        state.promptIndex = 0;
-        state.selection = [];
-        state.error = '';
-        return;
-      }
-      if (action.type !== 'ack') return;
-      openTurn(state);
-      note(state, 'Dran ' + playerById(state, currentId(state)).name + ' ' + state.screen);
+      state.activeId = null;
+      state.actorId = null;
+      state.prompts = [];
+      state.promptIndex = 0;
+      state.selection = [];
+      state.step = 'list';
+      state.error = '';
       return;
     }
     if (state.step === 'show' && action.type === 'back') {
@@ -1698,6 +1748,7 @@
         return;
       }
       state.activeId = null;
+      state.actorId = null;
       state.prompts = [];
       state.promptIndex = 0;
       state.selection = [];
@@ -1719,6 +1770,7 @@
         return;
       }
       state.activeId = pickedHunter.id;
+      state.actorId = pickedHunter.id;
       state.hunterId = pickedHunter.id;
       state.step = 'ready';
       state.selection = [];
@@ -1729,6 +1781,7 @@
       if (action.type === 'back') {
         state.step = 'list';
         state.activeId = null;
+        state.actorId = null;
         state.error = '';
         return;
       }
@@ -1741,6 +1794,7 @@
     if (action.type === 'back') {
       state.step = 'list';
       state.activeId = null;
+      state.actorId = null;
       state.selection = [];
       state.error = '';
       note(state, 'Jäger zurück');
