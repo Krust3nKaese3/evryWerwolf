@@ -48,7 +48,7 @@ Anzeigenamen stehen nur in `ROLE_NAMES` in `game.js`.
 | Jäger | Dorf | Schießt, wenn er stirbt, auf eine **Person**. |
 | Waschbär | Dorf, bis er stiehlt | Einmal optional die Rolle einer lebenden **Person** stehlen. |
 | Nachahmerin | Dorf | Begrenzt oft die Fähigkeit einer anderen Person frisch nachahmen und sofort einsetzen. Anzahl in der Einrichtung, Standard 1, höchstens 5. |
-| Nutte | Dorf | Jede Nacht Pflicht: in einem anderen **Haus** schlafen. |
+| Gastgeberin | Dorf | Jede Nacht Pflicht: in einem anderen **Haus** schlafen. |
 | Russe | Dorf | Einmal am Tag ein Duell. Keine Nachtaktion. |
 | Politiker | eigenes Lager | Keine Fähigkeit. Gewinnt nur, wenn die Tagesabstimmung ihn wählt. |
 | Schaufel | Dorf | Einmal optional eine tote **Person** zurückholen. |
@@ -57,7 +57,7 @@ Mehr als eine Karte derselben Rolle ist erlaubt, solange die Prüfung unten pass
 
 ### Waschbär
 
-Die Aktion kann übersprungen werden, der Screen bietet das ausdrücklich an. Ziel ist eine lebende **Person** (Personen-Symbol), nicht ihr Haus. Die Nutte kann also bestohlen werden, egal wo sie schläft. Ein leeres Haus gibt es für ihn nicht.
+Die Aktion kann übersprungen werden, der Screen bietet das ausdrücklich an. Ziel ist eine lebende **Person** (Personen-Symbol), nicht ihr Haus. Die Gastgeberin kann also bestohlen werden, egal wo sie schläft. Ein leeres Haus gibt es für ihn nicht.
 
 Hat die Person ihren Namen in dieser Nacht **noch nicht** angetippt, gilt der Diebstahl sofort: sie ist ab jetzt Dorfbewohner und erfährt das, sobald sie ihren Namen tippt. Der Waschbär spielt die neue Fähigkeit noch in derselben Nacht weiter, voll aufgeladen. Hat sie schon gehandelt, bleibt es bei der alten Regel: die Rolle wechselt erst in der **nächsten** Nacht, und sie darf die alte Aktion dieser Nacht behalten, wenn sie noch ansteht. In beiden Fällen erfährt sie es nur auf dem eigenen privaten Zug.
 
@@ -73,12 +73,12 @@ Sie sucht eine lebende **Person** als Vorlage (Personen-Symbol) und muss die Kop
 - Hexe: die eingestellte Zahl Heiltränke, frisch, plus ein Gifttrank, sofort in dieser Nacht und ohne das Opfer zu sehen
 - Amor: ein weiteres Paar, auch nach Nacht 1
 - Waschbär: muss eine Person bestehlen, mit denselben Folgen wie der echte Diebstahl
-- Nutte: schläft in dieser Nacht ebenfalls außer Haus
+- Gastgeberin: schläft in dieser Nacht ebenfalls außer Haus
 - Schaufel: muss eine tote Person wählen, falls jemand tot ist
 
 Dorfbewohner und Politiker haben nichts Nutzbares: der Einsatz ist verbraucht und verpufft. Der Russe hat keine Nachtfähigkeit. Kopiert sie ihn, muss sie am **nächsten Tag** ein Duell anfangen, 1 bis 5 Gegner wählen und selbst zuerst ziehen. Nur an diesem Tag. Leben dabei keine zwei Personen, entfällt eine kopierte Amor-Verbindung, der Einsatz ist trotzdem verbraucht. Eine kopierte Nachahmerin erlaubt genau eine weitere Vorlage, nicht eine endlose Kette. Die Kopie ist unabhängig davon, was das Original schon verbraucht hat.
 
-### Nutte
+### Gastgeberin
 
 Sie ist **jede Nacht** nicht zu Hause, schon bevor sie gewählt hat, und auch wenn jemand ihr Haus früher in der Runde anschaut. Sie muss ein anderes lebendes Haus wählen und darf in der nächsten Nacht wieder dieselbe Person als Gastgeber wählen. Folgen stehen im Abschnitt Häuser.
 
@@ -100,17 +100,17 @@ Einmal pro Spiel, nachts, optional, Ziel ist eine Person, die **schon als tot an
 
 Nachts zielen Fähigkeiten auf **Häuser** (Haus-Symbol vor dem Namen). Tagsüber auf **Personen** (Personen-Symbol).
 
-Ausnahmen, auch als Kopie der Nachahmerin: **Seherin**, **Amor** und **Waschbär** zielen nachts auf Personen. Die Seherin kann die Nutte direkt ansehen. Ohne den Schalter „Seherin sieht genaue Rolle“ (er ist aus) sagt sie nur **Team Dorfbewohner** oder **Böse**. Böse sind Werwolf, Politiker und der Waschbär, solange er noch Waschbär ist. Danach zählt die Rolle, die er gerade hat. Es gilt die Rolle im Moment des Hinsehens. Amor kann die Nutte verbinden, auch sich selbst. Der Waschbär stiehlt die Person, unabhängig von ihrem Haus. Die **Schaufel** zielt auf tote Personen, die schon angezeigt wurden. Der **Russe** und die **Abstimmung** auch. Der **Jäger**, der nachts stirbt, schießt in der Morgenauflösung auf eine Person, nicht auf ein Haus. Ein von der Nachahmerin kopierter Jägerschuss in der Nacht bleibt ein Haus.
+Ausnahmen, auch als Kopie der Nachahmerin: **Seherin**, **Amor** und **Waschbär** zielen nachts auf Personen. Die Seherin kann die Gastgeberin direkt ansehen. Ohne den Schalter „Seherin sieht genaue Rolle“ (er ist aus) sagt sie nur **Team Dorfbewohner** oder **Böse**. Böse sind Werwolf, Politiker und der Waschbär, solange er noch Waschbär ist. Danach zählt die Rolle, die er gerade hat. Es gilt die Rolle im Moment des Hinsehens. Amor kann die Gastgeberin verbinden, auch sich selbst. Der Waschbär stiehlt die Person, unabhängig von ihrem Haus. Die **Schaufel** zielt auf tote Personen, die schon angezeigt wurden. Der **Russe** und die **Abstimmung** auch. Der **Jäger**, der nachts stirbt, schießt in der Morgenauflösung auf eine Person, nicht auf ein Haus. Ein von der Nachahmerin kopierter Jägerschuss in der Nacht bleibt ein Haus.
 
-Ein nächtlicher Treffer auf ein Haus erwischt alle, die gerade darin sind: die Besitzerin, wenn sie daheim ist, plus jede Nutte (oder nachgeahmte Nutte), die dort schläft. Die echte Nutte ist nie daheim. Ein Treffer auf ihr eigenes Haus tut ihr nichts. Ein Treffer auf das Haus, in dem sie schläft, tötet sie und den Gastgeber, falls der daheim ist.
+Ein nächtlicher Treffer auf ein Haus erwischt alle, die gerade darin sind: die Besitzerin, wenn sie daheim ist, plus jede Gastgeberin (oder nachgeahmte Gastgeberin), die dort schläft. Die echte Gastgeberin ist nie daheim. Ein Treffer auf ihr eigenes Haus tut ihr nichts. Ein Treffer auf das Haus, in dem sie schläft, tötet sie und den Gastgeber, falls der daheim ist.
 
 Ein Heiltrank schützt ein Haus für **diese Nacht** vor jedem Tod darin: Werwolf-Angriff, kopierter Werwolf, Gift und nächtlicher Schuss. Alle, die in dem Haus sind, bleiben am Leben. Das eigene Haus darf sie heilen, vergiften darf sie es nicht. Sie erfährt nicht, welches Haus angegriffen wird, und legt den Trank blind. Mehrere Tränke in derselben Nacht sind erlaubt, jeder auf ein anderes Haus. Übrige Tränke bleiben für spätere Nächte. Die Nacht wird erst aufgelöst, wenn alle lebenden Personen fertig sind, deshalb ist die Reihenfolge egal.
 
-Amor, die Seherin und der Waschbär treffen Personen, auch die Nutte. Wo die Nutte schläft, ändert den Diebstahl nicht.
+Amor, die Seherin und der Waschbär treffen Personen, auch die Gastgeberin. Wo die Gastgeberin schläft, ändert den Diebstahl nicht.
 
 ## Nacht
 
-Alle Lebenden stehen in einer Liste. Die Person tippt den eigenen Namen. Auf dem nächsten Screen steht immer **Zurück**: falscher Name, zurück zur Liste, nichts ist verbraucht und der Name bleibt offen. Erst die Aktion selbst, **Ich will gar nichts machen** oder **Fertig** macht den Namen grau und legt das Handy auf die Namensliste zurück. Das gewählte Ziel, das Haus oder die Stimme öffnet nie den nächsten Bildschirm. Danach nur der eigene Screen, und nur wenn diese Person selbst ihren Namen tippt: Fähigkeit, oder **Ich will gar nichts machen**. Die Nutte muss ein Haus wählen. Wer fertig ist, ist grau und nicht mehr antippbar. Liebe und ein Diebstahlshinweis erscheinen auf diesem privaten Screen, wenn sie fällig sind. Dasselbe Zurück gilt beim Rollenaufdecken, bei der Abstimmung, beim Jägerschuss und beim Duell, bevor der Name bestätigt ist.
+Alle Lebenden stehen in einer Liste. Die Person tippt den eigenen Namen. Auf dem nächsten Screen steht immer **Zurück**: falscher Name, zurück zur Liste, nichts ist verbraucht und der Name bleibt offen. Erst die Aktion selbst, **Ich will gar nichts machen** oder **Fertig** macht den Namen grau und legt das Handy auf die Namensliste zurück. Das gewählte Ziel, das Haus oder die Stimme öffnet nie den nächsten Bildschirm. Danach nur der eigene Screen, und nur wenn diese Person selbst ihren Namen tippt: Fähigkeit, oder **Ich will gar nichts machen**. Die Gastgeberin muss ein Haus wählen. Wer fertig ist, ist grau und nicht mehr antippbar. Liebe und ein Diebstahlshinweis erscheinen auf diesem privaten Screen, wenn sie fällig sind. Dasselbe Zurück gilt beim Rollenaufdecken, bei der Abstimmung, beim Jägerschuss und beim Duell, bevor der Name bestätigt ist.
 
 Die Hexe darf in diesem Zug so viele Heiltränke legen, wie sie noch hat, jedes Haus einmal, und danach den Gifttrank. Beides kann sie lassen. Eine nachgeahmte Hexe bekommt die eingestellte Zahl Heiltränke frisch für diese Nacht, plus einen Gifttrank.
 
@@ -167,7 +167,7 @@ Start ist nur erlaubt, wenn mindestens ein Werwolf da ist, mindestens eine Perso
 
 ## Speicher und Fehlerbericht
 
-Namen liegen unter `werwolf.lobby.v1`, sobald jemand einen Namen hinzufügt, ändert sich die Liste also sofort. Die Rollenwahl (Anzahlen, Einsätze, Heiltränke, Pool, Wolfsminimum und -maximum, Seherin genau) liegt unter `werwolf.setup.v1` und wird bei jeder Änderung gespeichert. Sie kommt beim Start, beim erneuten Öffnen der Rollenwahl und bei einem neuen Spiel wieder. Das laufende Spiel liegt unter `werwolf.game.v1`. Punkte liegen unter `werwolf.scores.v1`, pro Name, und bleiben über Spiele und Neustarts. Home und „Spiel abbrechen“ löschen nur das Spiel, nicht die Namen und nicht die Punkte. **Punkte zurücksetzen** fragt nach und löscht erst nach der Bestätigung. Ein Nachtstand aus der Rohfassung, der noch in der ersten Runde hängt, wird auf den offenen Zug gesetzt. Ein Stand aus der zweiten Runde geht zurück in die Lobby, die Namen bleiben.
+Namen liegen unter `werwolf.lobby.v1`, sobald jemand einen Namen hinzufügt, ändert sich die Liste also sofort. Die Rollenwahl (Anzahlen, Einsätze, Heiltränke, Pool, Wolfsminimum und -maximum, Seherin genau) liegt unter `werwolf.setup.v1` und wird bei jeder Änderung gespeichert. Sie kommt beim Start, beim erneuten Öffnen der Rollenwahl und bei einem neuen Spiel wieder. Das laufende Spiel liegt unter `werwolf.game.v1`. Der gespeicherte Rollenschlüssel der Gastgeberin bleibt `nutte`, damit alte Spielstände und Rollenwahlen weiter laden. Punkte liegen unter `werwolf.scores.v1`, pro Name, und bleiben über Spiele und Neustarts. Home und „Spiel abbrechen“ löschen nur das Spiel, nicht die Namen und nicht die Punkte. **Punkte zurücksetzen** fragt nach und löscht erst nach der Bestätigung. Ein Nachtstand aus der Rohfassung, der noch in der ersten Runde hängt, wird auf den offenen Zug gesetzt. Ein Stand aus der zweiten Runde geht zurück in die Lobby, die Namen bleiben.
 
 Das Käfer-Symbol sitzt auf jedem Screen, ohne selbst eine Rolle zu verraten. Es öffnet einen Bericht mit Beschreibungsfeld. **Kopieren** legt einen Markdown-Block in die Zwischenablage: Beschreibung, Version, Zeitpunkt, Konfiguration, den kompletten Spielstand und das Aktionsprotokoll (Bildwechsel, Tipps, Nachtaktionen, Auflösung, Fehler mit Stack). Zurück schließt den Bericht und lässt das Spiel, wie es war. Der Text enthält Geheimnisse.
 

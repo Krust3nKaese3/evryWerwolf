@@ -607,7 +607,7 @@ test('Nachahmerin verbraucht einen Einsatz ohne FÃ¤higkeit und muss beim WaschbÃ
   assert.strictEqual(p(again, 2).stealUsed, false);
 });
 
-test('Nutte: leeres Haus, Gastgeber, Heiltrank und Tagestreffer nur auf sie', function () {
+test('Gastgeberin: leeres Haus, Gastgeber, Heiltrank und Tagestreffer nur auf sie', function () {
   const state = make(['nutte', 'dorfbewohner', 'werwolf', 'hexe'], { healPotions: 2 });
   revealAndStart(state);
   openNight(state, 1);
@@ -641,7 +641,7 @@ test('Nutte: leeres Haus, Gastgeber, Heiltrank und Tagestreffer nur auf sie', fu
   W.send(state, { type: 'confirm', id: 2 });
   openNight(state, 2);
   W.send(state, { type: 'ack' });
-  assert.strictEqual(p(state, 1).alive, true, 'Heiltrank rettet Nutte und Gastgeber');
+  assert.strictEqual(p(state, 1).alive, true, 'Heiltrank rettet Gastgeberin und Gastgeber');
   assert.strictEqual(p(state, 2).alive, true);
   assert.strictEqual(p(state, 4).healsLeft, 0);
   assert.strictEqual(p(state, 4).poisonLeft, false);
@@ -863,7 +863,7 @@ test('Viele volle Partien bleiben in den Siegregeln', function () {
   });
 });
 
-test('Nutte stirbt mit dem Gastgeber, die Wahl trifft nur sie, die Seherin sieht sie', function () {
+test('Gastgeberin stirbt mit dem Gastgeber, die Wahl trifft nur sie, die Seherin sieht sie', function () {
   const state = make(['nutte', 'dorfbewohner', 'werwolf', 'seherin']);
   revealAndStart(state);
   openNight(state, 1);
