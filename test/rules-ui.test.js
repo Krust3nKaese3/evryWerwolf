@@ -26,6 +26,20 @@ function startServer() {
   });
 }
 
+async function finishRevealCard(page) {
+  if (await page.getByText('Du bist Amor').count()) {
+    const choices = page.locator('button[data-act="select"]');
+    await choices.nth(0).click();
+    await choices.nth(1).click();
+    await page.getByRole('button', { name: 'Fertig' }).click();
+    const cover = page.getByRole('button', { name: 'Verdecken' });
+    if (await cover.count()) await cover.click();
+    return;
+  }
+  const understood = page.getByRole('button', { name: 'Verstanden, verdecken' });
+  if (await understood.count()) await understood.click();
+}
+
 async function setCount(page, label, target) {
   const row = page.locator('.stepper', { hasText: label }).first();
   for (let i = 0; i < 8; i++) {
@@ -117,15 +131,16 @@ async function gateAndOrder(browser, base) {
   await page.getByRole('button', { name: 'Zurück', exact: true }).click();
   assert.strictEqual(await page.locator('button[data-act="reveal-pick"].seen').count(), 0);
   await page.locator('button[data-act="reveal-pick"]').first().click();
-  await page.getByRole('button', { name: 'Verstanden, verdecken' }).click();
+  await finishRevealCard(page);
   await page.locator('button[data-act="reveal-pick"]').first().click();
-  await page.getByRole('button', { name: 'Verstanden, verdecken' }).click();
+  await finishRevealCard(page);
   assert.strictEqual(await start.isDisabled(), true);
+  assert.ok((await page.locator('#app').innerText()).indexOf('Noch nicht fertig:') >= 0);
   for (let i = 0; i < 8 && await start.isDisabled(); i++) {
     const unseen = page.locator('button[data-act="reveal-pick"]:not(.seen)');
     if (!(await unseen.count())) break;
     await unseen.first().click();
-    await page.getByRole('button', { name: 'Verstanden, verdecken' }).click();
+    await finishRevealCard(page);
   }
   assert.strictEqual(await start.isDisabled(), false);
   await start.click();

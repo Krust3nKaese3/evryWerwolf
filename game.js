@@ -236,21 +236,69 @@
     note(state, 'Name entfernt ' + id);
   }
 
+  function defaultConfig(playerCount) {
+    var counts = defaultCounts(playerCount);
+    var wolves = counts.werwolf || 1;
+    return {
+      counts: counts,
+      nachUses: 1,
+      healPotions: 2,
+      rolePool: true,
+      seerExact: false,
+      wolfMin: wolves,
+      wolfMax: wolves
+    };
+  }
+
+  function currentConfig(state) {
+    var wolves = (state.counts && state.counts.werwolf) || 1;
+    return {
+      counts: state.counts || defaultCounts(state.players.length),
+      nachUses: state.nachUses == null ? 1 : state.nachUses,
+      healPotions: state.healPotions == null ? 2 : state.healPotions,
+      rolePool: !!state.rolePool,
+      seerExact: !!state.seerExact,
+      wolfMin: state.wolfMin == null ? wolves : state.wolfMin,
+      wolfMax: state.wolfMax == null ? wolves : state.wolfMax
+    };
+  }
+
+  function applySetup(state, config) {
+    state.counts = config.counts;
+    state.nachUses = config.nachUses;
+    state.healPotions = config.healPotions;
+    state.rolePool = !!config.rolePool;
+    state.seerExact = !!config.seerExact;
+    state.wolfMin = config.wolfMin;
+    state.wolfMax = config.wolfMax;
+    state.confirmUndoDeal = false;
+    state.error = '';
+    setScreen(state, 'setup');
+  }
+
   function beginSetup(state) {
     if (state.players.length < 4) {
       state.error = 'Mindestens 4 Mitspieler.';
       return;
     }
-    state.counts = defaultCounts(state.players.length);
-    state.nachUses = 1;
-    state.healPotions = 2;
-    state.rolePool = true;
-    state.seerExact = false;
-    state.wolfMin = state.counts.werwolf || 1;
-    state.wolfMax = state.counts.werwolf || 1;
-    state.error = '';
-    setScreen(state, 'setup');
+    applySetup(state, defaultConfig(state.players.length));
     note(state, 'Rollenwahl');
+  }
+
+  function rewindToSetup(state) {
+    var config = currentConfig(state);
+    var players = (state.players || []).map(function (p) { return { id: p.id, name: p.name }; });
+    var nextId = state.nextId;
+    var log = state.log || [];
+    var rng = state._rng;
+    var fresh = newLobby();
+    fresh.players = players;
+    fresh.nextId = nextId || (players.length + 1);
+    fresh.log = log;
+    fresh._rng = rng;
+    replaceState(state, fresh);
+    applySetup(state, config);
+    note(state, 'Rollen verworfen, zurück zur Rollenwahl');
   }
 
   function createGame(names, counts, opts) {
@@ -804,7 +852,6 @@
     if (player.role === 'nachahmerin' && player.nachLeft > 0) return { kind: 'copy', target: 'person', depth: 0 };
     if (player.role === 'waschbaer' && !player.stealUsed) return { kind: 'steal', target: 'person', forced: false };
     if (player.role === 'seherin') return { kind: 'seer', target: 'person' };
-    if (player.role === 'amor' && state.nightNumber === 1) return { kind: 'amor', target: 'person', forced: true };
     if (player.role === 'werwolf') return { kind: 'wolf', target: 'house' };
     if (player.role === 'schaufel' && !player.schaufelUsed && revealedDead(state).length) {
       return { kind: 'schaufel', target: 'person', forced: false };
@@ -1111,7 +1158,7 @@
     id = Number(id);
     var prompt = currentPrompt(state);
     var max = 1;
-    if (prompt && prompt.kind === 'amor') max = 2;
+    if ((prompt && prompt.kind === 'amor') || (state.screen === 'reveal' && state.step === 'link')) max = 2;
     if (state.screen === 'duel' && state.duel && state.duel.stage === 'pick') max = 5;
     var list = state.selection.slice();
     var at = list.indexOf(id);
@@ -1591,9 +1638,63 @@
     return lobby;
   }
 
+  function peekedCount(state) {
+    var peeked = state.peeked || {};
+    var count = 0;
+    (state.players || []).forEach(function (p) { if (peeked[p.id]) count += 1; });
+    return count;
+  }
+
+  function markPeeked(state, id) {
+    if (!state.peeked) state.peeked = {};
+    state.peeked[id] = true;
+  }
+
+  function revealDone(state, player) {
+    if (!player || !state.revealed || !state.revealed[player.id]) return false;
+    if (player.role === 'amor' && !player.amorLinked) return false;
+    return true;
+  }
+
+  function revealReady(state) {
+    if (!state.players || !state.players.length) return false;
+    for (var i = 0; i < state.players.length; i++) {
+      if (!revealDone(state, state.players[i])) return false;
+    }
+    return true;
+  }
+
+  function pendingNames(state) {
+    return (state.players || []).filter(function (p) { return !revealDone(state, p); }).map(function (p) { return p.name; });
+  }
+
+  function finishReveal(state, player) {
+    if (!state.revealed) state.revealed = {};
+    state.revealed[player.id] = true;
+    state.activeId = null;
+    state.selection = [];
+    state.step = 'list';
+    state.error = '';
+  }
+
   function revealSend(state, action) {
-    if (action.type === 'back' && state.step === 'show') {
+    if (action.type === 'undo-deal-no') {
+      state.confirmUndoDeal = false;
+      state.error = '';
+      return;
+    }
+    if (action.type === 'undo-deal' && (state.step === 'list' || !state.step)) {
+      if (peekedCount(state) > 1 && !action.confirm) {
+        state.confirmUndoDeal = true;
+        state.error = '';
+        return;
+      }
+      rewindToSetup(state);
+      return;
+    }
+    if (action.type === 'back' && (state.step === 'show' || state.step === 'link')) {
       state.activeId = null;
+      state.selection = [];
       state.step = 'list';
       state.error = '';
       note(state, 'Rolle zurück');
@@ -1602,23 +1703,66 @@
     if (action.type === 'reveal-pick') {
       var person = playerById(state, action.id);
       if (!person) return;
+      markPeeked(state, person.id);
       state.activeId = person.id;
-      state.step = 'show';
+      state.selection = [];
+      state.confirmUndoDeal = false;
       state.error = '';
+      state.step = person.role === 'amor' && !person.amorLinked ? 'link' : 'show';
       note(state, 'Rolle zeigen ' + person.name);
       return;
     }
+    if (state.step === 'link' && action.type === 'select') {
+      rotateSelection(state, action.id);
+      state.error = '';
+      return;
+    }
+    if (state.step === 'link' && action.type === 'skip') {
+      state.error = 'Diese Fähigkeit musst du einsetzen.';
+      return;
+    }
+    if (state.step === 'link' && action.type === 'confirm') {
+      var amor = playerById(state, state.activeId);
+      if (!amor || amor.role !== 'amor') return;
+      var pair = chosenIds(state, action);
+      if (pair.length !== 2) {
+        state.error = 'Wähle genau zwei Personen.';
+        return;
+      }
+      if (pair[0] === pair[1] || !livingTarget(state, pair[0]) || !livingTarget(state, pair[1])) {
+        state.error = 'Zwei verschiedene lebende Personen.';
+        return;
+      }
+      addLink(state, pair[0], pair[1]);
+      amor.amorLinked = true;
+      amor.amorPair = pair.slice();
+      state.selection = [];
+      state.error = '';
+      note(state, 'Amor verbindet ' + pair[0] + ' ' + pair[1]);
+      if (pair.indexOf(amor.id) >= 0) {
+        if (!state.seenLove) state.seenLove = {};
+        state.seenLove[amor.id] = loveSignature(state, amor.id);
+        state.step = 'love';
+        return;
+      }
+      finishReveal(state, amor);
+      return;
+    }
+    if (state.step === 'love' && (action.type === 'ack' || action.type === 'back')) {
+      var lover = playerById(state, state.activeId);
+      if (lover) finishReveal(state, lover);
+      return;
+    }
     if (action.type === 'ack' && state.step === 'show') {
-      if (!state.revealed) state.revealed = {};
-      state.revealed[state.activeId] = true;
-      note(state, 'Rolle verdeckt ' + playerById(state, state.activeId).name);
-      state.activeId = null;
-      state.step = 'list';
+      var shown = playerById(state, state.activeId);
+      if (!shown) return;
+      note(state, 'Rolle verdeckt ' + shown.name);
+      finishReveal(state, shown);
       return;
     }
     if (action.type === 'start-game') {
-      if (!everyoneRevealed(state)) {
-        state.error = 'Jede Person muss ihre Rolle mindestens einmal ansehen.';
+      if (!revealReady(state)) {
+        state.error = 'Jede Person muss fertig sein. Amor verbindet dabei ein Paar.';
         return;
       }
       note(state, 'Spiel startet, Nacht 1, Bürgermeister ' + playerById(state, state.mayorId).name);
@@ -2117,6 +2261,10 @@
     revealedDead: revealedDead,
     beginNight: beginNight,
     everyoneRevealed: everyoneRevealed,
+    revealReady: revealReady,
+    revealDone: revealDone,
+    pendingNames: pendingNames,
+    currentConfig: currentConfig,
     adoptSaved: adoptSaved,
     loveSignature: loveSignature,
     ownerHome: ownerHome

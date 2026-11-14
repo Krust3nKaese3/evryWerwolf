@@ -3,6 +3,7 @@
   var LOBBY_KEY = 'werwolf.lobby.v1';
   var GAME_KEY = 'werwolf.game.v1';
   var SCORE_KEY = 'werwolf.scores.v1';
+  var SETUP_KEY = 'werwolf.setup.v1';
   var STORAGE_TIMEOUT_MS = 4000;
   var app = document.getElementById('app');
   var state = W.newLobby();
@@ -84,18 +85,54 @@
     };
   }
 
+  var savedSetup = null;
   var saveQueue = Promise.resolve();
+
+  function setupActions(type) {
+    return type === 'set-count' || type === 'set-nach' || type === 'set-heals' || type === 'set-wolf-min' ||
+      type === 'set-wolf-max' || type === 'toggle-seer' || type === 'toggle-pool' || type === 'suggest' ||
+      type === 'undo-deal' || type === 'to-setup';
+  }
+
+  function rememberSetup() {
+    if (!state || state.screen !== 'setup') return;
+    savedSetup = {
+      v: 1,
+      counts: state.counts,
+      nachUses: state.nachUses,
+      healPotions: state.healPotions,
+      rolePool: !!state.rolePool,
+      seerExact: !!state.seerExact,
+      wolfMin: state.wolfMin,
+      wolfMax: state.wolfMax
+    };
+  }
+
+  function applySavedSetup() {
+    if (!savedSetup || !state || state.screen !== 'setup') return;
+    if (savedSetup.counts) state.counts = JSON.parse(JSON.stringify(savedSetup.counts));
+    if (savedSetup.nachUses != null) state.nachUses = savedSetup.nachUses;
+    if (savedSetup.healPotions != null) state.healPotions = savedSetup.healPotions;
+    state.rolePool = !!savedSetup.rolePool;
+    state.seerExact = !!savedSetup.seerExact;
+    if (savedSetup.wolfMin != null) state.wolfMin = savedSetup.wolfMin;
+    if (savedSetup.wolfMax != null) state.wolfMax = savedSetup.wolfMax;
+    state.error = '';
+  }
 
   function persist() {
     if (!saveReady) return;
     var lobby = lobbySnapshot();
     var game = state.screen === 'lobby' ? null : JSON.parse(JSON.stringify(state));
     var points = scores;
+    var setup = savedSetup ? JSON.parse(JSON.stringify(savedSetup)) : null;
     saveQueue = saveQueue.then(function () {
       return writeKey(LOBBY_KEY, lobby).then(function () {
         return writeKey(GAME_KEY, game);
       }).then(function () {
         return writeKey(SCORE_KEY, points);
+      }).then(function () {
+        return writeKey(SETUP_KEY, setup);
       });
     }).then(function () {}, function () {});
   }
@@ -124,6 +161,10 @@
     rendering = true;
     try {
       W.send(state, action);
+      if (action.type === 'to-setup') applySavedSetup();
+      if (state.screen === 'setup' && (action.type === 'to-setup' || action.type === 'undo-deal' || setupActions(action.type))) {
+        rememberSetup();
+      }
       applyScores();
       persist();
       render();
@@ -215,7 +256,7 @@
       seherin: state.seerExact
         ? 'Nachts siehst du die genaue Rolle einer Person.'
         : 'Nachts siehst du nur Team Dorfbewohner oder Böse.',
-      amor: 'Nur in der ersten Nacht verbindest du zwei Personen, dich selbst eingeschlossen. Aussetzen geht nicht.',
+      amor: 'Beim Aufdecken verbindest du zwei Personen, dich selbst eingeschlossen. Aussetzen geht nicht. Danach hast du nachts keine eigene Aktion.',
       jaeger: 'Wenn du stirbst, schießt du auf eine Person.',
       waschbaer: 'Einmal darfst du die Rolle einer lebenden Person stehlen. Hat sie heute noch nicht gehandelt, gilt die Rolle sofort, sonst ab der nächsten Nacht.',
       nachahmerin: 'Du kannst ' + uses + ' Mal die Fähigkeit einer anderen Person nachahmen und musst sie sofort einsetzen.',
@@ -344,32 +385,78 @@ if (!(poolOn && role === 'werwolf')) sum += count;
       '<button type="button" class="btn secondary" data-act="back-lobby">Zurück zu den Namen</button></div>';
   }
 
+  function pairLine(id) {
+    var other = player(id);
+    if (!other) return '';
+    return '<p><strong>' + esc(other.name) + '</strong> ist ' + esc(W.roleName(other.role)) + '.</p>';
+  }
+
   function renderReveal() {
+    if (state.step === 'love') {
+      var lover = player(state.activeId);
+      if (!lover) return header('Rollen', 'Werwolf');
+      var partnerId = (lover.amorPair || []).filter(function (id) { return id !== lover.id; })[0];
+      var partner = player(partnerId);
+      return header('Liebe', lover.name) +
+        '<section class="stage card">' + hero('💞', 'Liebe') +
+        '<p class="eyebrow">Dein Partner</p>' +
+        '<p class="big-role">' + esc(partner ? partner.name : '') + '</p>' +
+        '<p class="lead">ist ' + esc(partner ? W.roleName(partner.role) : '') + '.</p>' +
+        '<button type="button" class="btn" data-act="ack">Verdecken</button></section>';
+    }
+    if (state.step === 'link') {
+      var amor = player(state.activeId);
+      if (!amor) return header('Rollen', 'Werwolf');
+      var choices = W.living(state).map(function (p) {
+        return choiceButton(p.id, p.name, p.id === amor.id ? 'du selbst' : '', 'person');
+      }).join('');
+      return header('Deine Rolle', amor.name) +
+        '<section class="stage">' + hero('💘', 'Amor') +
+        '<p class="eyebrow">Nur für ' + esc(amor.name) + '</p>' +
+        '<p class="big-role">Amor</p>' +
+        '<p class="lead">Du bist Amor. Wähle jetzt zwei Personen. Du selbst darfst dabei sein. Aussetzen geht nicht.</p>' +
+        errorHtml() +
+        '<div class="stack">' + choices + '</div>' +
+        '<button type="button" class="btn" data-act="confirm">Fertig</button>' +
+        '<button type="button" class="btn secondary" data-act="back">Zurück</button></section>';
+    }
     if (state.step === 'show') {
       var person = player(state.activeId);
       if (!person) return header('Rollen', 'Werwolf');
+      var pair = person.role === 'amor' && person.amorPair
+        ? '<div class="card stack"><p class="hint">Dein Paar</p>' + person.amorPair.map(pairLine).join('') + '</div>'
+        : '';
       return header('Deine Rolle', person.name) +
         '<section class="stage card">' + hero(roleIcon(person.role), W.roleName(person.role)) +
         '<p class="eyebrow">Nur für ' + esc(person.name) + '</p>' +
         '<p class="big-role">' + esc(W.roleName(person.role)) + '</p>' +
         '<p class="lead">' + esc(blurb(person.role, person)) + '</p>' +
+        pair +
         '<button type="button" class="btn" data-act="ack">Verstanden, verdecken</button>' +
         '<button type="button" class="btn secondary" data-act="back">Zurück</button></section>';
     }
     var names = state.players.map(function (p) {
-      var seen = state.revealed && state.revealed[p.id];
+      var seen = W.revealDone(state, p);
       return '<button type="button" class="choice' + (seen ? ' seen' : '') + '" data-act="reveal-pick" data-id="' + p.id + '">' +
         '<span><span class="who">' + esc(p.name) + '</span>' +
-        (seen ? '<span class="meta">Rolle schon gesehen, noch mal möglich</span>' : '<span class="meta">Rolle ansehen</span>') +
+        (seen ? '<span class="meta">fertig, noch mal möglich</span>' : '<span class="meta">Rolle ansehen</span>') +
         '</span></button>';
     }).join('');
-    var startReady = W.everyoneRevealed(state);
+    var startReady = W.revealReady(state);
+    var pending = W.pendingNames(state);
+    var confirm = state.confirmUndoDeal
+      ? '<div class="banner error">Mehr als eine Person hat die Rolle schon gesehen. Zurück zur Rollenwahl verwirft die verteilten Rollen.</div>' +
+        '<button type="button" class="btn bad" data-act="undo-deal" data-confirm="1">Ja, Rollen verwerfen</button>' +
+        '<button type="button" class="btn secondary" data-act="undo-deal-no">Abbrechen</button>'
+      : '<button type="button" class="btn secondary" data-act="undo-deal">Zurück</button>';
     return header('Rollen', 'Wer ist dran?') +
       hero('🎭', 'Rollen aufdecken') +
       '<div class="stack">' + errorHtml() +
-      '<p class="lead">Jede Person tippt den eigenen Namen und sieht nur die eigene Rolle. Danach ist der Name grau, bleibt aber antippbar. Spiel starten geht erst, wenn jede Person die Rolle mindestens einmal gesehen hat.</p>' +
+      '<p class="lead">Jede Person tippt den eigenen Namen und sieht nur die eigene Rolle. Der Name wird grau, wenn sie fertig ist, und bleibt antippbar. Amor ist erst fertig, wenn er ein Paar verbunden hat. Spiel starten geht erst dann.</p>' +
       '<div class="stack">' + names + '</div>' +
-      '<button type="button" class="btn" data-act="start-game"' + (startReady ? '' : ' disabled') + '>Spiel starten</button></div>';
+      (startReady ? '' : '<p class="hint">Noch nicht fertig: ' + esc(pending.join(', ')) + '</p>') +
+      '<button type="button" class="btn" data-act="start-game"' + (startReady ? '' : ' disabled') + '>Spiel starten</button>' +
+      confirm + '</div>';
   }
 
   function renderDiscuss() {
@@ -782,6 +869,10 @@ if (duel.stage === 'pull-handoff' || duel.stage === 'pull-ready') {
       act({ type: 'confirm', id: ids.length ? ids[0] : undefined, ids: ids });
       return;
     }
+    if (type === 'undo-deal') {
+      act({ type: 'undo-deal', confirm: el.getAttribute('data-confirm') === '1' });
+      return;
+    }
     if (type === 'select' || type === 'remove-name' || type === 'night-pick' || type === 'reveal-pick' || type === 'vote-pick' || type === 'hunter-pick' || type === 'duel-pick') {
       var actType = type === 'select' ? 'select' : type;
       act({ type: actType, id: Number(el.getAttribute('data-id')) });
@@ -845,6 +936,7 @@ if (duel.stage === 'pull-handoff' || duel.stage === 'pull-ready') {
 
   async function boot() {
     scores = W.grantPoints(await readKey(SCORE_KEY), []);
+    savedSetup = await readKey(SETUP_KEY);
     var savedGame = await readKey(GAME_KEY);
     var savedLobby = await readKey(LOBBY_KEY);
     if (savedGame && savedGame.screen && savedGame.screen !== 'lobby' && savedGame.players) {
@@ -859,6 +951,7 @@ if (duel.stage === 'pull-handoff' || duel.stage === 'pull-ready') {
       state.nextId = savedLobby.nextId || (state.players.length + 1);
       state.log = savedLobby.log || [];
     }
+    if (state.screen === 'setup') rememberSetup();
     booting = false;
     saveReady = true;
     applyScores();
